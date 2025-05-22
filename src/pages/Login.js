@@ -19,6 +19,7 @@ const Login = () => {
       navigate('/clients'); // Or wherever your dashboard/main page is
     } catch (err) {
       setError(err.message); // Show the actual error for debugging
+      console.error(err);
     }
     setLoading(false);
   };
