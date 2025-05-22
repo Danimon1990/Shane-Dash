@@ -1,6 +1,9 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const TabContent = ({ activeTab }) => {
+  const navigate = useNavigate();
+
   // Sample data - in a real app, this would come from your backend
   const clients = [
     { id: 1, name: 'John Doe', email: 'john@example.com', dateStarted: '2024-01-15', age: 35 },
@@ -72,8 +75,15 @@ const TabContent = ({ activeTab }) => {
       case 'forms':
         return (
           <div className="w-full p-8">
-            <h2 className="text-2xl font-bold mb-4">Clinical Forms</h2>
-            <p>Clinical forms will be displayed here.</p>
+            <h2 className="text-2xl font-bold mb-4">Forms</h2>
+            <ul className="list-disc pl-6 text-lg">
+              <li className="mb-2">
+                <button className="text-indigo-600 hover:underline" onClick={() => navigate('/forms/ai-summary')}>
+                  AI summary
+                </button>
+              </li>
+              <li>progress-integration</li>
+            </ul>
           </div>
         );
       case 'admin':
