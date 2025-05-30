@@ -1,36 +1,17 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Clients from '../pages/Clients';
+import Associates from '../pages/Associates';
 
 const TabContent = ({ activeTab }) => {
   const navigate = useNavigate();
-
-  // Sample data for associates only
-  const associates = [
-    { id: 1, name: 'Silvia Popa', specialty: 'Clinical Psychology' },
-    { id: 2, name: 'Dahkotahv Beckham', specialty: 'Family Therapy' },
-    { id: 3, name: 'Avery Williams', specialty: 'Child Psychology' },
-    { id: 4, name: 'Nicole Mosher', specialty: 'Couples Therapy' },
-  ];
 
   const renderContent = () => {
     switch (activeTab) {
       case 'clients':
         return <Clients />;
       case 'associates':
-        return (
-          <div className="w-full p-8">
-            <h2 className="text-2xl font-bold mb-4">Associates</h2>
-            <div className="flex flex-wrap gap-6">
-              {associates.map(associate => (
-                <div key={associate.id} className="bg-white p-6 rounded-lg shadow w-full md:w-1/4">
-                  <h3 className="font-semibold text-lg">{associate.name}</h3>
-                  <p className="text-gray-600">{associate.specialty}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
+        return <Associates />;
       case 'billing':
         return (
           <div className="w-full p-8">
