@@ -3,18 +3,17 @@ const { google } = require("googleapis");
 const cors = require("cors")({ origin: true });
 
 // --- Configuration (Consider moving to environment variables later) ---
-const SHEET_ID = '1_uU3mF9ZNplGYDbUEYsid8EG1Pfgq7tYYw6ZwBORbT8';
-const SHEET_NAME = 'Sheet1'; // Make sure this is the EXACT name of your sheet tab
-const LAST_COLUMN_LETTER = 'M'; // Or 'L', or whatever your last actual data column is
+const SHEET_ID = '1kGRG-BDGbSQNPwQVBQWIc1WvRrAmW-4I9V1FhUI3ez4';
+const SHEET_NAME = 'Form Responses 1';
+const LAST_COLUMN_LETTER = 'BE'; // Updated to include all columns
 const RANGE = `${SHEET_NAME}!A2:${LAST_COLUMN_LETTER}`;
 // --- End Configuration ---
 
 exports.getSheetData = functions.https.onRequest(async (req, res) => {
   // Enable CORS
   return cors(req, res, async () => {
-    functions.logger.log('getSheetData function called with method:', req.method); // Use functions.logger for GCP
+    functions.logger.log('getSheetData function called with method:', req.method);
 
-    // All your logic should be here, directly inside this callback
     try {
       functions.logger.log('Initializing Google Auth for Application Default Credentials...');
       const auth = new google.auth.GoogleAuth({
@@ -37,33 +36,85 @@ exports.getSheetData = functions.https.onRequest(async (req, res) => {
         functions.logger.log(`Processing ${rows.length} rows.`);
         const formattedClients = rows.map((row, index) => ({
           id: index + 1,
-          name: `${row[1] || ''} ${row[0] || ''}`.trim(),
+          name: `${row[2] || ''} ${row[4] || ''}`.trim(), // Preferred Name + Legal Last Name
           active: true,
           data: {
-            firstName: row[1] || '',
-            lastName: row[0] || '',
-            therapist: row[2] || 'N/A',
-            phone: row[3] || 'N/A',
-            email: row[4] || 'N/A',
-            birthDate: row[7] || 'N/A'
+            firstName: row[2] || '', // Preferred Name
+            lastName: row[4] || '', // Legal Last Name
+            email: row[1] || 'N/A', // Email Address
+            phone: row[5] || 'N/A', // Phone Number
+            birthDate: row[6] || 'N/A', // Date of Birth
+            address: {
+              street: row[7] || 'N/A', // Street Address
+              city: row[8] || 'N/A', // City
+              state: row[9] || 'N/A', // State
+              zipCode: row[10] || 'N/A' // Zip Code
+            },
+            emergencyContact: {
+              name: row[11] || 'N/A', // Emergency Contact
+              phone: row[12] || 'N/A' // Emergency Contact Phone Number
+            },
+            maritalStatus: row[13] || 'N/A', // Marital Status
+            gender: row[14] || 'N/A', // Gender/Preferred Pronoun
+            employment: {
+              status: row[15] || 'N/A', // Employment Status
+              employer: row[16] || 'N/A' // Employer/School
+            },
+            referralSource: row[17] || 'N/A', // Referral Source
+            reasonForReachingOut: row[18] || 'N/A', // Reason for reaching out
+            medications: {
+              isOnMedications: row[19] || 'N/A', // Are you on any medications?
+              list: row[20] || 'N/A' // Please list current medications
+            }
           },
           insurance: {
-            provider: row[5] || 'N/A',
-            idNumber: row[6] || 'N/A',
-            copay: row[9] || 'N/A',
-            deductible: row[10] || 'N/A',
-            insuranceName: row[12] || 'N/A'
+            paymentOption: row[21] || 'N/A', // Payment Options
+            privatePayRate: row[22] || 'N/A', // Private Pay Rate
+            provider: row[23] || 'N/A', // Insurance Provider
+            isPrimary: row[24] || 'N/A', // Are you the primary or dependent?
+            planName: row[25] || 'N/A', // Insurance Plan Name
+            memberId: row[26] || 'N/A', // Member ID/Policy Number
+            groupNumber: row[27] || 'N/A', // Group Number
+            phoneNumber: row[28] || 'N/A', // Insurance Phone Number
+            deductible: row[29] || 'N/A', // Deductible Amount
+            copay: row[30] || 'N/A', // Copay Amount
+            outOfPocket: row[31] || 'N/A' // Out-of-pocket Amount
           },
-          medicalInfo: {
-            diagnosis: row[8] || 'N/A',
-            cpt: row[9] || 'N/A'
+          billing: {
+            cardName: row[32] || 'N/A', // Name (as it appears on card)
+            cardType: row[33] || 'N/A', // Credit Card Type
+            cardNumber: row[34] || 'N/A', // Credit Card Number
+            cardExpiration: row[35] || 'N/A', // Credit Card Expiration Date
+            cardSecurityCode: row[36] || 'N/A', // 3-Digit Security Code
+            billingZipCode: row[37] || 'N/A', // Billing Zip Code
+            cardAuthorization: row[38] || 'N/A', // Credit Card Authorization
+            agreedToPolicies: row[39] || 'N/A', // Agreed to policies
+            agreedToCancellation: row[40] || 'N/A', // Agreed to cancellation policy
+            agreedToPrivacy: row[41] || 'N/A', // Agreed to privacy policy
+            agreedAmount: row[42] || 'N/A', // Agreed amount
+            signature: row[43] || 'N/A', // Full name signature
+            signatureDate: row[44] || 'N/A' // Today's Date
+          },
+          medical: {
+            physicianName: row[45] || 'N/A', // Physician/Medical Professional's Name
+            physicianPhone: row[46] || 'N/A', // Physician/Medical Professional's Contact Number
+            physicianAddress: row[47] || 'N/A' // Physician/Medical Professional's Office Address
+          },
+          concerns: {
+            selectedConcerns: row[48] || 'N/A', // Checked concerns
+            otherConcerns: row[49] || 'N/A', // Any other issues or concerns
+            primaryConcern: row[50] || 'N/A' // Most important concern
+          },
+          documents: {
+            mergedDocId: row[51] || 'N/A', // Merged Doc ID
+            mergedDocUrl: row[52] || 'N/A', // Merged Doc URL
+            mergedDocLink: row[53] || 'N/A', // Link to merged Doc
+            mergeStatus: row[54] || 'N/A' // Document Merge Status
           },
           therapist: {
-            name: row[2] || 'N/A',
-            startDate: 'N/A'
+            name: row[55] || 'N/A', // Therapist
+            status: row[56] || 'N/A' // Status
           },
-          concerns: '',
-          treatmentPlan: '',
           progressNotes: [],
           closure: {
             isActive: true,
@@ -87,5 +138,5 @@ exports.getSheetData = functions.https.onRequest(async (req, res) => {
         details: error.message 
       });
     }
-  }); // End of the cors callback
-}); // End of exports.getSheetData
+  });
+});

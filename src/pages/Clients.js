@@ -74,7 +74,7 @@ const Clients = () => {
               >
                 <div className="font-medium">{client.name}</div>
                 <div className="text-sm text-gray-500">
-                  {client.data.insurance}
+                  {client.insurance.provider}
                 </div>
               </div>
             ))}
@@ -86,9 +86,9 @@ const Clients = () => {
           <div className="md:col-span-2 bg-white rounded-lg shadow p-4">
             <h2 className="text-xl font-semibold mb-4">Client Details</h2>
             <div className="space-y-6">
-              {/* Data Section */}
+              {/* Basic Information Section */}
               <section>
-                <h3 className="text-lg font-medium mb-2">Data</h3>
+                <h3 className="text-lg font-medium mb-2">Basic Information</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm text-gray-500">First Name</label>
@@ -99,43 +99,45 @@ const Clients = () => {
                     <div>{selectedClient.data.lastName}</div>
                   </div>
                   <div>
-                    <label className="text-sm text-gray-500">Therapist</label>
-                    <div>{selectedClient.data.therapist}</div>
+                    <label className="text-sm text-gray-500">Email</label>
+                    <div>{selectedClient.data.email}</div>
                   </div>
                   <div>
                     <label className="text-sm text-gray-500">Phone</label>
                     <div>{selectedClient.data.phone}</div>
                   </div>
                   <div>
-                    <label className="text-sm text-gray-500">Email</label>
-                    <div>{selectedClient.data.email}</div>
-                  </div>
-                  <div>
                     <label className="text-sm text-gray-500">Birth Date</label>
                     <div>{selectedClient.data.birthDate}</div>
                   </div>
+                  <div>
+                    <label className="text-sm text-gray-500">Gender</label>
+                    <div>{selectedClient.data.gender}</div>
+                  </div>
                 </div>
-                <button className="mt-2 text-indigo-600 hover:text-indigo-800">
-                  Edit
-                </button>
               </section>
 
-              {/* Therapist Section */}
+              {/* Address Section */}
               <section>
-                <h3 className="text-lg font-medium mb-2">Therapist</h3>
+                <h3 className="text-lg font-medium mb-2">Address</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm text-gray-500">Therapist</label>
-                    <div>{selectedClient.therapist.name}</div>
+                    <label className="text-sm text-gray-500">Street</label>
+                    <div>{selectedClient.data.address.street}</div>
                   </div>
                   <div>
-                    <label className="text-sm text-gray-500">Start Date</label>
-                    <div>{selectedClient.therapist.startDate}</div>
+                    <label className="text-sm text-gray-500">City</label>
+                    <div>{selectedClient.data.address.city}</div>
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-500">State</label>
+                    <div>{selectedClient.data.address.state}</div>
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-500">Zip Code</label>
+                    <div>{selectedClient.data.address.zipCode}</div>
                   </div>
                 </div>
-                <button className="mt-2 text-indigo-600 hover:text-indigo-800">
-                  Edit
-                </button>
               </section>
 
               {/* Insurance Section */}
@@ -147,25 +149,26 @@ const Clients = () => {
                     <div>{selectedClient.insurance.provider}</div>
                   </div>
                   <div>
-                    <label className="text-sm text-gray-500">ID Number</label>
-                    <div>{selectedClient.insurance.idNumber}</div>
+                    <label className="text-sm text-gray-500">Plan Name</label>
+                    <div>{selectedClient.insurance.planName}</div>
                   </div>
                   <div>
-                    <label className="text-sm text-gray-500">Copay</label>
-                    <div>{selectedClient.insurance.copay}</div>
+                    <label className="text-sm text-gray-500">Member ID</label>
+                    <div>{selectedClient.insurance.memberId}</div>
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-500">Group Number</label>
+                    <div>{selectedClient.insurance.groupNumber}</div>
                   </div>
                   <div>
                     <label className="text-sm text-gray-500">Deductible</label>
                     <div>{selectedClient.insurance.deductible}</div>
                   </div>
                   <div>
-                    <label className="text-sm text-gray-500">Insurance</label>
-                    <div>{selectedClient.insurance.insurance}</div>
+                    <label className="text-sm text-gray-500">Copay</label>
+                    <div>{selectedClient.insurance.copay}</div>
                   </div>
                 </div>
-                <button className="mt-2 text-indigo-600 hover:text-indigo-800">
-                  Edit
-                </button>
               </section>
 
               {/* Medical Information Section */}
@@ -173,84 +176,56 @@ const Clients = () => {
                 <h3 className="text-lg font-medium mb-2">Medical Information</h3>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm text-gray-500">Diagnosis</label>
-                    <div className="mt-1">{selectedClient.medicalInfo.diagnosis}</div>
+                    <label className="text-sm text-gray-500">Physician Name</label>
+                    <div>{selectedClient.medical.physicianName}</div>
                   </div>
                   <div>
-                    <label className="text-sm text-gray-500">CPT</label>
-                    <div className="mt-1">{selectedClient.medicalInfo.cpt}</div>
+                    <label className="text-sm text-gray-500">Physician Phone</label>
+                    <div>{selectedClient.medical.physicianPhone}</div>
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-500">Physician Address</label>
+                    <div>{selectedClient.medical.physicianAddress}</div>
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-500">Medications</label>
+                    <div>{selectedClient.data.medications.list}</div>
                   </div>
                 </div>
-                <button className="mt-2 text-indigo-600 hover:text-indigo-800">
-                  Edit
-                </button>
               </section>
 
               {/* Concerns Section */}
               <section>
                 <h3 className="text-lg font-medium mb-2">Concerns</h3>
-                <div className="mt-1">{selectedClient.concerns}</div>
-                <button className="mt-2 text-indigo-600 hover:text-indigo-800">
-                  Edit
-                </button>
-              </section>
-
-              {/* Treatment Plan Section */}
-              <section>
-                <h3 className="text-lg font-medium mb-2">Treatment Plan</h3>
-                <div className="mt-1">{selectedClient.treatmentPlan}</div>
-                <button className="mt-2 text-indigo-600 hover:text-indigo-800">
-                  Edit
-                </button>
-              </section>
-
-              {/* Progress Notes Section */}
-              <section>
-                <h3 className="text-lg font-medium mb-2">Progress Notes</h3>
                 <div className="space-y-4">
-                  {selectedClient.progressNotes.map((note, index) => (
-                    <div key={index} className="border-b pb-4">
-                      <div className="text-sm text-gray-500">{note.date}</div>
-                      <div className="mt-1">{note.note}</div>
-                    </div>
-                  ))}
-                </div>
-                <button className="mt-4 text-indigo-600 hover:text-indigo-800">
-                  Add New Note
-                </button>
-              </section>
-
-              {/* Closure Section */}
-              <section>
-                <h3 className="text-lg font-medium mb-2">Closure</h3>
-                <div className="space-y-4">
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={!selectedClient.closure.isActive}
-                      onChange={() => {
-                        // TODO: Implement closure toggle
-                      }}
-                      className="form-checkbox h-5 w-5 text-indigo-600"
-                    />
-                    <span className="ml-2">Mark as Inactive</span>
+                  <div>
+                    <label className="text-sm text-gray-500">Selected Concerns</label>
+                    <div>{selectedClient.concerns.selectedConcerns}</div>
                   </div>
-                  {!selectedClient.closure.isActive && (
-                    <div className="space-y-2">
-                      <div>
-                        <label className="text-sm text-gray-500">Closure Date</label>
-                        <div>{selectedClient.closure.date}</div>
-                      </div>
-                      <div>
-                        <label className="text-sm text-gray-500">Closure Notes</label>
-                        <div>{selectedClient.closure.notes}</div>
-                      </div>
-                    </div>
-                  )}
+                  <div>
+                    <label className="text-sm text-gray-500">Other Concerns</label>
+                    <div>{selectedClient.concerns.otherConcerns}</div>
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-500">Primary Concern</label>
+                    <div>{selectedClient.concerns.primaryConcern}</div>
+                  </div>
                 </div>
-                <button className="mt-2 text-indigo-600 hover:text-indigo-800">
-                  Edit
-                </button>
+              </section>
+
+              {/* Emergency Contact Section */}
+              <section>
+                <h3 className="text-lg font-medium mb-2">Emergency Contact</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm text-gray-500">Name</label>
+                    <div>{selectedClient.data.emergencyContact.name}</div>
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-500">Phone</label>
+                    <div>{selectedClient.data.emergencyContact.phone}</div>
+                  </div>
+                </div>
               </section>
             </div>
           </div>

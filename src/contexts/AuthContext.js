@@ -1,42 +1,38 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { auth, db } from '../firebase';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 
 const AuthContext = createContext();
 
-export const useAuth = () => {
+export function useAuth() {
   return useContext(AuthContext);
-};
+}
 
-export const AuthProvider = ({ children }) => {
+export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
-  const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
+  const auth = getAuth();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        // Get user role from Firestore
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists()) {
-          setUserRole(userDoc.data().role);
-        }
-        setCurrentUser(user);
-      } else {
-        setCurrentUser(null);
-        setUserRole(null);
-      }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
       setLoading(false);
     });
 
     return unsubscribe;
-  }, []);
+  }, [auth]);
+
+  const login = (email, password) => {
+    return signInWithEmailAndPassword(auth, email, password);
+  };
+
+  const logout = () => {
+    return signOut(auth);
+  };
 
   const value = {
     currentUser,
-    userRole,
-    loading
+    login,
+    logout
   };
 
   return (
@@ -44,4 +40,4 @@ export const AuthProvider = ({ children }) => {
       {!loading && children}
     </AuthContext.Provider>
   );
-}; 
+} 
