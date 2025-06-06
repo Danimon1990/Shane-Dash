@@ -1,10 +1,21 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Associates = () => {
+  const navigate = useNavigate();
   const [associates, setAssociates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedAssociate, setSelectedAssociate] = useState(null);
+
+  // Define the list of therapists to match Clients.js
+  const therapistList = [
+    'Shane Bruce',
+    'Silvia Popa',
+    'Dahkotahv Beckham',
+    'Avery Williams',
+    'Nicole Mosher'
+  ];
 
   useEffect(() => {
     const fetchData = async () => {
@@ -15,37 +26,68 @@ const Associates = () => {
         console.log('Raw data from Firebase:', data);
         
         if (Array.isArray(data)) {
-          // Group clients by therapist
-          const therapistMap = new Map();
+          // Create a map for each therapist
+          const therapistMap = new Map(
+            therapistList.map(name => [
+              name,
+              {
+                id: name,
+                name: name,
+                email: 'N/A',
+                phone: 'N/A',
+                clients: []
+              }
+            ])
+          );
           
+          // Add an "Unassigned" category
+          therapistMap.set('Unassigned', {
+            id: 'Unassigned',
+            name: 'Unassigned',
+            email: 'N/A',
+            phone: 'N/A',
+            clients: []
+          });
+          
+          // Group clients by therapist
           data.forEach(client => {
-            const therapistName = client.data.therapist || 'Unassigned';
+            const therapistName = client.therapist?.name || 'Unassigned';
             console.log('Processing client for therapist:', therapistName, client);
             
-            if (!therapistMap.has(therapistName)) {
-              therapistMap.set(therapistName, {
-                id: therapistName,
-                name: therapistName,
-                email: client.data.email || 'N/A',
-                phone: client.data.phone || 'N/A',
-                clients: []
+            if (therapistMap.has(therapistName)) {
+              therapistMap.get(therapistName).clients.push({
+                id: client.id,
+                name: `${client.data.firstName} ${client.data.lastName}`,
+                insurance: client.insurance.provider,
+                active: client.therapist?.status === 'Active',
+                phone: client.data.phone,
+                email: client.data.email,
+                birthDate: client.data.birthDate,
+                clientData: client // Store the full client data for navigation
+              });
+            } else {
+              // If therapist not in list, add to Unassigned
+              therapistMap.get('Unassigned').clients.push({
+                id: client.id,
+                name: `${client.data.firstName} ${client.data.lastName}`,
+                insurance: client.insurance.provider,
+                active: client.therapist?.status === 'Active',
+                phone: client.data.phone,
+                email: client.data.email,
+                birthDate: client.data.birthDate,
+                clientData: client // Store the full client data for navigation
               });
             }
-            
-            therapistMap.get(therapistName).clients.push({
-              id: client.id,
-              name: `${client.data.firstName} ${client.data.lastName}`,
-              insurance: client.insurance.provider,
-              active: client.active,
-              phone: client.data.phone,
-              email: client.data.email,
-              birthDate: client.data.birthDate
-            });
           });
           
           // Convert Map to Array and sort by name
           const therapists = Array.from(therapistMap.values())
-            .sort((a, b) => a.name.localeCompare(b.name));
+            .sort((a, b) => {
+              // Put Unassigned at the end
+              if (a.name === 'Unassigned') return 1;
+              if (b.name === 'Unassigned') return -1;
+              return a.name.localeCompare(b.name);
+            });
           
           console.log('Processed therapists:', therapists);
           setAssociates(therapists);
@@ -60,6 +102,16 @@ const Associates = () => {
 
     fetchData();
   }, []);
+
+  const handleClientClick = (client) => {
+    // Navigate to clients page with the selected client
+    navigate('/clients', { 
+      state: { 
+        selectedClient: client.clientData,
+        scrollToClient: true
+      }
+    });
+  };
 
   // Add console log for selected associate
   useEffect(() => {
@@ -133,9 +185,10 @@ const Associates = () => {
                   {selectedAssociate.clients.map(client => (
                     <div
                       key={client.id}
-                      className={`p-3 bg-gray-50 rounded ${
+                      className={`p-3 bg-gray-50 rounded cursor-pointer hover:bg-gray-100 transition-colors ${
                         !client.active ? 'opacity-50' : ''
                       }`}
+                      onClick={() => handleClientClick(client)}
                     >
                       <div className="font-medium">{client.name}</div>
                       <div className="text-sm text-gray-500">

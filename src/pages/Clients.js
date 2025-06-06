@@ -1,40 +1,79 @@
 // src/pages/Clients.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 
 const Clients = () => {
+  const location = useLocation();
   const [activeFilter, setActiveFilter] = useState(true);
   const [selectedClient, setSelectedClient] = useState(null);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('info'); // 'info', 'insurance', 'notes'
+  const [showTherapistMenu, setShowTherapistMenu] = useState(false);
+  const [showStatusMenu, setShowStatusMenu] = useState(false);
+  const clientRef = useRef(null);
+
+  const [therapists] = useState([
+    'Shane Bruce',
+    'Silvia Popa',
+    'Dahkotahv Beckham',
+    'Avery Williams',
+    'Nicole Mosher'
+  ]);
 
   useEffect(() => {
-    const fetchSheetData = async () => {
+    const fetchData = async () => {
       try {
-        console.log('Starting to fetch data from Firebase Function...');
+        console.log('Fetching data from Firebase Function...');
         const response = await fetch('https://us-central1-therapist-online.cloudfunctions.net/getSheetData');
-        console.log('Response status:', response.status);
         const data = await response.json();
-        console.log('Received data from Firebase Function:', data);
+        console.log('Raw data from Firebase:', data);
         
-        if (Array.isArray(data) && data.length > 0) {
-          console.log('Setting clients with data:', data);
-          setClients(data);
-        } else {
-          console.log('No data received or empty array');
-          setClients([]);
+        if (Array.isArray(data)) {
+          const formattedClients = data.map((client, index) => ({
+            id: index + 1,
+            name: `${client.data.firstName} ${client.data.lastName}`,
+            active: client.therapist?.status === 'Active',
+            data: client.data,
+            insurance: client.insurance,
+            billing: client.billing,
+            medical: client.medical,
+            concerns: client.concerns,
+            documents: client.documents,
+            therapist: client.therapist,
+            progressNotes: client.progressNotes || [],
+            closure: client.closure || {
+              isActive: true,
+              date: null,
+              notes: ''
+            }
+          }));
+          setClients(formattedClients);
         }
         setLoading(false);
       } catch (err) {
-        console.error('Error fetching sheet data:', err);
+        console.error('Error fetching data:', err);
         setError(err.message);
         setLoading(false);
       }
     };
 
-    fetchSheetData();
+    fetchData();
   }, []);
+
+  // Handle navigation from Associates page
+  useEffect(() => {
+    if (location.state?.selectedClient) {
+      const client = location.state.selectedClient;
+      setSelectedClient(client);
+      
+      // If we need to scroll to the client
+      if (location.state.scrollToClient && clientRef.current) {
+        clientRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  }, [location.state]);
 
   const filteredClients = clients.filter(client => client.active === activeFilter);
 
@@ -273,6 +312,71 @@ const Clients = () => {
     </div>
   );
 
+  const handleTherapistAssign = async (therapistName) => {
+    try {
+      console.log('Assigning therapist:', therapistName, 'to client:', selectedClient);
+      const response = await fetch('https://us-central1-therapist-online.cloudfunctions.net/updateClientTherapist', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          clientId: selectedClient.data.email,
+          therapist: therapistName
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Server response:', errorText);
+        throw new Error(`Failed to update therapist: ${errorText}`);
+      }
+
+      // Update local state
+      setClients(clients.map(client => 
+        client.data.email === selectedClient.data.email
+          ? { ...client, therapist: { ...client.therapist, name: therapistName } }
+          : client
+      ));
+      setShowTherapistMenu(false);
+    } catch (err) {
+      console.error('Error updating therapist:', err);
+      setError(err.message);
+    }
+  };
+
+  const handleStatusToggle = async () => {
+    try {
+      console.log('Toggling status for client:', selectedClient);
+      const response = await fetch('https://us-central1-therapist-online.cloudfunctions.net/updateClientStatus', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          clientId: selectedClient.data.email,
+          status: !selectedClient.active
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Server response:', errorText);
+        throw new Error(`Failed to update status: ${errorText}`);
+      }
+
+      // Update local state
+      setClients(clients.map(client => 
+        client.data.email === selectedClient.data.email
+          ? { ...client, active: !client.active }
+          : client
+      ));
+    } catch (err) {
+      console.error('Error updating status:', err);
+      setError(err.message);
+    }
+  };
+
   if (loading) return <div className="container mx-auto px-4">Loading...</div>;
   if (error) return <div className="container mx-auto px-4">Error: {error}</div>;
 
@@ -301,16 +405,18 @@ const Clients = () => {
             {filteredClients.map(client => (
               <div
                 key={client.id}
-                className={`p-3 rounded cursor-pointer ${
-                  selectedClient?.id === client.id
-                    ? 'bg-indigo-100'
-                    : 'hover:bg-gray-100'
+                ref={selectedClient?.id === client.id ? clientRef : null}
+                className={`p-4 bg-white rounded-lg shadow mb-4 ${
+                  selectedClient?.id === client.id ? 'ring-2 ring-indigo-500' : ''
                 }`}
                 onClick={() => setSelectedClient(client)}
               >
                 <div className="font-medium">{client.name}</div>
                 <div className="text-sm text-gray-500">
                   {client.insurance.provider}
+                </div>
+                <div className="text-sm text-gray-500">
+                  Therapist: {client.therapist?.name || 'Unassigned'}
                 </div>
               </div>
             ))}
@@ -320,7 +426,47 @@ const Clients = () => {
         {/* Client Details */}
         {selectedClient && (
           <div className="md:col-span-2 bg-white rounded-lg shadow p-4">
-            <h2 className="text-xl font-semibold mb-4">Client Details</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Client Details</h2>
+              <div className="flex space-x-4">
+                {/* Therapist Assignment Button */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowTherapistMenu(!showTherapistMenu)}
+                    className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
+                  >
+                    Assign Therapist
+                  </button>
+                  {showTherapistMenu && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
+                      <div className="py-1">
+                        {therapists.map((therapist) => (
+                          <button
+                            key={therapist}
+                            onClick={() => handleTherapistAssign(therapist)}
+                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            {therapist}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Status Toggle Button */}
+                <button
+                  onClick={handleStatusToggle}
+                  className={`px-4 py-2 rounded ${
+                    selectedClient.active
+                      ? 'bg-green-600 hover:bg-green-700'
+                      : 'bg-red-600 hover:bg-red-700'
+                  } text-white`}
+                >
+                  {selectedClient.active ? 'Active' : 'Inactive'}
+                </button>
+              </div>
+            </div>
             {renderTabs()}
             <div className="mt-4">
               {activeTab === 'info' && renderClientInfo()}

@@ -140,3 +140,147 @@ exports.getSheetData = functions.https.onRequest(async (req, res) => {
     }
   });
 });
+
+exports.updateClientTherapist = functions.https.onRequest(async (req, res) => {
+  return cors(req, res, async () => {
+    if (req.method !== 'POST') {
+      res.status(405).send('Method Not Allowed');
+      return;
+    }
+
+    try {
+      functions.logger.log('Received request body:', req.body);
+      const { clientId, therapist } = req.body;
+      
+      if (!clientId) {
+        functions.logger.error('No clientId provided');
+        res.status(400).send('Client ID is required');
+        return;
+      }
+
+      functions.logger.log(`Updating therapist for client ${clientId} to ${therapist}`);
+      
+      // Get the Google Sheets API client
+      const auth = new google.auth.GoogleAuth({
+        scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+      });
+      const sheets = google.sheets({ version: 'v4', auth });
+
+      functions.logger.log('Fetching client data from sheet');
+      // Find the row for this client by email (column B)
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: SHEET_ID,
+        range: `${SHEET_NAME}!B:B`, // Column B contains email addresses
+      });
+
+      const rows = response.data.values;
+      functions.logger.log(`Found ${rows.length} rows in sheet`);
+      
+      // Skip header row (index 0) and find the client
+      const rowIndex = rows.slice(1).findIndex(row => row[0] === clientId);
+      functions.logger.log(`Client found at row index: ${rowIndex}`);
+
+      if (rowIndex === -1) {
+        functions.logger.error(`Client with email ${clientId} not found`);
+        res.status(404).send('Client not found');
+        return;
+      }
+
+      // Add 2 to account for 0-based index and header row
+      const sheetRow = rowIndex + 2;
+      functions.logger.log(`Updating therapist in column BD at row ${sheetRow}`);
+      
+      // Update the therapist in column BD (column index 55)
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SHEET_ID,
+        range: `${SHEET_NAME}!BD${sheetRow}`,
+        valueInputOption: 'RAW',
+        resource: {
+          values: [[therapist]],
+        },
+      });
+
+      functions.logger.log('Therapist updated successfully');
+      res.status(200).send('Therapist updated successfully');
+    } catch (error) {
+      functions.logger.error('Error updating therapist:', error);
+      functions.logger.error('Error stack:', error.stack);
+      if (error.response) {
+        functions.logger.error('Google API Error:', error.response.data);
+      }
+      res.status(500).send('Error updating therapist');
+    }
+  });
+});
+
+exports.updateClientStatus = functions.https.onRequest(async (req, res) => {
+  return cors(req, res, async () => {
+    if (req.method !== 'POST') {
+      res.status(405).send('Method Not Allowed');
+      return;
+    }
+
+    try {
+      functions.logger.log('Received request body:', req.body);
+      const { clientId, status } = req.body;
+      
+      if (!clientId) {
+        functions.logger.error('No clientId provided');
+        res.status(400).send('Client ID is required');
+        return;
+      }
+
+      functions.logger.log(`Updating status for client ${clientId} to ${status}`);
+      
+      // Get the Google Sheets API client
+      const auth = new google.auth.GoogleAuth({
+        scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+      });
+      const sheets = google.sheets({ version: 'v4', auth });
+
+      functions.logger.log('Fetching client data from sheet');
+      // Find the row for this client by email (column B)
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: SHEET_ID,
+        range: `${SHEET_NAME}!B:B`, // Column B contains email addresses
+      });
+
+      const rows = response.data.values;
+      functions.logger.log(`Found ${rows.length} rows in sheet`);
+      
+      // Skip header row (index 0) and find the client
+      const rowIndex = rows.slice(1).findIndex(row => row[0] === clientId);
+      functions.logger.log(`Client found at row index: ${rowIndex}`);
+
+      if (rowIndex === -1) {
+        functions.logger.error(`Client with email ${clientId} not found`);
+        res.status(404).send('Client not found');
+        return;
+      }
+
+      // Add 2 to account for 0-based index and header row
+      const sheetRow = rowIndex + 2;
+      functions.logger.log(`Updating status in column BE at row ${sheetRow}`);
+      
+      // Update the status in column BE (column index 56)
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SHEET_ID,
+        range: `${SHEET_NAME}!BE${sheetRow}`,
+        valueInputOption: 'RAW',
+        resource: {
+          values: [[status ? 'Active' : 'Inactive']], // Convert boolean to 'Active'/'Inactive'
+        },
+      });
+
+      functions.logger.log('Status updated successfully');
+      res.status(200).send('Status updated successfully');
+    } catch (error) {
+      functions.logger.error('Error updating status:', error);
+      functions.logger.error('Error stack:', error.stack);
+      if (error.response) {
+        functions.logger.error('Google API Error:', error.response.data);
+      }
+      res.status(500).send('Error updating status');
+    }
+  });
+});
