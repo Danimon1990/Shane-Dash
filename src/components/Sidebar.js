@@ -1,18 +1,29 @@
 // src/components/Sidebar.js
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
-const Sidebar = ({ activeTab, onTabChange }) => {
+const Sidebar = ({ activeTab }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { currentUser, logout } = useAuth();
+
   const navItems = [
-    { id: 'clients', label: 'Clients' },
-    { id: 'associates', label: 'Associates' },
-    { id: 'billing', label: 'Billing' },
-    { id: 'admin', label: 'Admin' },
-    { id: 'calendar', label: 'Calendar' },
-    { id: 'forms', label: 'Clinical Forms' },
+    { id: 'clients', label: 'Clients', path: '/clients' },
+    { id: 'associates', label: 'Associates', path: '/associates' },
+    { id: 'billing', label: 'Billing', path: '/billing' },
+    { id: 'admin', label: 'Admin', path: '/admin' },
+    { id: 'calendar', label: 'Calendar', path: '/calendar' },
+    { id: 'forms', label: 'Clinical Forms', path: '/forms' },
   ];
 
-  const navigate = useNavigate();
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  // Get current path without leading slash
+  const currentPath = location.pathname.slice(1);
 
   return (
     <div className="w-64 min-h-screen bg-gray-800 text-white flex flex-col py-8 px-4">
@@ -22,9 +33,9 @@ const Sidebar = ({ activeTab, onTabChange }) => {
           {navItems.map((item) => (
             <li key={item.id}>
               <button
-                onClick={() => navigate('/' + item.id)}
+                onClick={() => navigate(item.path)}
                 className={`w-full text-left px-4 py-2 rounded transition-colors font-medium focus:outline-none focus:ring-2 focus:ring-indigo-400 ${
-                  activeTab === item.id ? 'bg-gray-700' : 'hover:bg-gray-700'
+                  currentPath === item.id ? 'bg-gray-700' : 'hover:bg-gray-700'
                 }`}
               >
                 {item.label}
@@ -33,6 +44,19 @@ const Sidebar = ({ activeTab, onTabChange }) => {
           ))}
         </ul>
       </nav>
+      
+      {/* User Profile and Logout Section - Always visible */}
+      <div className="mt-auto border-t border-gray-700 pt-4">
+        <div className="px-4 py-2 text-sm text-gray-300">
+          {currentUser?.name || currentUser?.email}
+        </div>
+        <button
+          onClick={handleLogout}
+          className="w-full text-left px-4 py-2 rounded transition-colors font-medium hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-red-400 hover:text-red-300"
+        >
+          Logout
+        </button>
+      </div>
     </div>
   );
 };

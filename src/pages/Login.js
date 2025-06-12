@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 const Login = () => {
@@ -8,21 +8,41 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, currentUser } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('Form submitted with:', { email, password: password ? '***' : 'empty' });
+    
+    if (!email || !password) {
+      setError('Please enter both email and password');
+      return;
+    }
+
     try {
       setError('');
       setLoading(true);
+      console.log('Attempting login...');
       await login(email, password);
-      navigate('/');
+      console.log('Login successful, navigating to /clients');
+      navigate('/clients');
     } catch (err) {
-      setError('Failed to sign in. Please check your credentials.');
       console.error('Login error:', err);
+      if (err.message.includes('verify your email')) {
+        setError('Please verify your email before logging in. Check your inbox for a verification email.');
+      } else if (err.message.includes('invalid-credential') || err.message.includes('wrong-password') || err.message.includes('user-not-found')) {
+        setError('Invalid email or password. Please try again.');
+      } else if (err.message.includes('too-many-requests')) {
+        setError('Too many failed attempts. Please try again later.');
+      } else {
+        setError(err.message || 'Failed to sign in. Please try again.');
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
+
+  console.log('Login component rendered, auth:', { login: typeof login });
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -31,11 +51,24 @@ const Login = () => {
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Sign in to your account
           </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Or{' '}
+            <Link to="/signup" className="font-medium text-indigo-600 hover:text-indigo-500">
+              create a new account
+            </Link>
+          </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
               <span className="block sm:inline">{error}</span>
+              {error.includes('verify your email') && (
+                <div className="mt-2">
+                  <Link to="/verify-email" className="font-medium text-indigo-600 hover:text-indigo-500">
+                    Resend verification email
+                  </Link>
+                </div>
+              )}
             </div>
           )}
           <div className="rounded-md shadow-sm -space-y-px">
@@ -77,7 +110,11 @@ const Login = () => {
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+              onClick={(e) => {
+                console.log('Button clicked');
+                // Don't prevent default here, let the form handle it
+              }}
             >
               {loading ? 'Signing in...' : 'Sign in'}
             </button>

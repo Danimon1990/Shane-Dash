@@ -2,6 +2,12 @@ import React, { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import TabContent from '../components/TabContent';
+import Clients from './Clients';
+import Associates from './Associates';
+import Billing from './Billing';
+import AdminPanel from './AdminPanel';
+import Calendar from './Calendar';
+import ClinicalForms from './ClinicalForms';
 import AISummary from './AISummary';
 
 const Dashboard = () => {
@@ -20,13 +26,13 @@ const Dashboard = () => {
           <div className="p-8">
             <Routes>
               <Route path="/" element={<TabContent activeTab={activeTab} />} />
-              <Route path="/clients" element={<TabContent activeTab="clients" />} />
-              <Route path="/associates" element={<TabContent activeTab="associates" />} />
-              <Route path="/billing" element={<TabContent activeTab="billing" />} />
-              <Route path="/admin" element={<TabContent activeTab="admin" />} />
-              <Route path="/calendar" element={<TabContent activeTab="calendar" />} />
-              <Route path="/forms" element={<TabContent activeTab="forms" />} />
-              <Route path="/forms/ai-summary" element={<AISummary />} />
+              <Route path="clients" element={<Clients />} />
+              <Route path="associates" element={<Associates />} />
+              <Route path="billing" element={<Billing />} />
+              <Route path="admin" element={<AdminPanel />} />
+              <Route path="calendar" element={<Calendar />} />
+              <Route path="clinical-forms" element={<ClinicalForms />} />
+              <Route path="forms/ai-summary" element={<AISummary />} />
             </Routes>
           </div>
         </main>

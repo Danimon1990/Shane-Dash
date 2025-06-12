@@ -216,54 +216,11 @@ const Calendar = () => {
   };
 
   return (
-    <div className="container mx-auto px-4">
-      {renderCalendarHeader()}
-      {renderCalendarView()}
-
-      {/* Event Details Modal */}
-      {selectedEvent && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-xl font-semibold mb-4">Event Details</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm text-gray-500">Title</label>
-                <div className="font-medium">{selectedEvent.title}</div>
-              </div>
-              <div>
-                <label className="text-sm text-gray-500">Client</label>
-                <div>{selectedEvent.client}</div>
-              </div>
-              <div>
-                <label className="text-sm text-gray-500">Therapist</label>
-                <div>{selectedEvent.therapist}</div>
-              </div>
-              <div>
-                <label className="text-sm text-gray-500">Time</label>
-                <div>
-                  {new Date(selectedEvent.start).toLocaleString()} -{' '}
-                  {new Date(selectedEvent.end).toLocaleString()}
-                </div>
-              </div>
-              <div>
-                <label className="text-sm text-gray-500">Status</label>
-                <div>{selectedEvent.status}</div>
-              </div>
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => setSelectedEvent(null)}
-                  className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
-                >
-                  Close
-                </button>
-                <button className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
-                  Edit Event
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+    <div className="flex">
+      <div className="flex-1 p-8">
+        {renderCalendarHeader()}
+        {renderCalendarView()}
+      </div>
     </div>
   );
 };
