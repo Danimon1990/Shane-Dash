@@ -1,6 +1,14 @@
 const functions = require("firebase-functions");
 const { google } = require("googleapis");
-const cors = require("cors")({ origin: true });
+const cors = require("cors")({
+  origin: [
+    'http://localhost:3000',
+    'https://therapist-online.web.app',
+    'https://therapist-online.firebaseapp.com'
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true,
+});
 
 // --- Configuration (Consider moving to environment variables later) ---
 const SHEET_ID = '1kGRG-BDGbSQNPwQVBQWIc1WvRrAmW-4I9V1FhUI3ez4';
@@ -10,8 +18,7 @@ const RANGE = `${SHEET_NAME}!A2:${LAST_COLUMN_LETTER}`;
 // --- End Configuration ---
 
 exports.getSheetData = functions.https.onRequest(async (req, res) => {
-  // Enable CORS
-  return cors(req, res, async () => {
+  cors(req, res, async () => {
     functions.logger.log('getSheetData function called with method:', req.method);
 
     try {
@@ -141,11 +148,10 @@ exports.getSheetData = functions.https.onRequest(async (req, res) => {
   });
 });
 
-exports.updateClientTherapist = functions.https.onRequest(async (req, res) => {
-  return cors(req, res, async () => {
+exports.updateClientTherapist = functions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
     if (req.method !== 'POST') {
-      res.status(405).send('Method Not Allowed');
-      return;
+      return res.status(405).send('Method Not Allowed');
     }
 
     try {
@@ -213,11 +219,10 @@ exports.updateClientTherapist = functions.https.onRequest(async (req, res) => {
   });
 });
 
-exports.updateClientStatus = functions.https.onRequest(async (req, res) => {
-  return cors(req, res, async () => {
+exports.updateClientStatus = functions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
     if (req.method !== 'POST') {
-      res.status(405).send('Method Not Allowed');
-      return;
+      return res.status(405).send('Method Not Allowed');
     }
 
     try {
