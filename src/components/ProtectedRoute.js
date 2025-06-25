@@ -34,6 +34,14 @@ const ProtectedRoute = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
 
+  // If user is a billing user, restrict access to only /billing and /
+  if (currentUser?.role === 'billing') {
+    const allowedPaths = ['/', '/billing'];
+    if (!allowedPaths.includes(location.pathname)) {
+      return <Navigate to="/billing" replace />;
+    }
+  }
+
   console.log('✅ ProtectedRoute: Access granted');
   return children;
 };

@@ -24,8 +24,8 @@ const Login = () => {
       setLoading(true);
       console.log('Attempting login...');
       await login(email, password);
-      console.log('Login successful, navigating to /clients');
-      navigate('/clients');
+      console.log('Login successful, navigating to /');
+      navigate('/');
     } catch (err) {
       console.error('Login error:', err);
       if (err.message.includes('verify your email')) {

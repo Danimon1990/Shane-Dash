@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { useSecureData } from '../hooks/useSecureData';
 
 const Billing = () => {
+  const { currentUser } = useAuth();
+  const { isAuthenticated, canPerform, secureClientOperations } = useSecureData();
   const [billingData, setBillingData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -9,25 +13,36 @@ const Billing = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!isAuthenticated) {
+        setLoading(false);
+        setError('Authentication required');
+        return;
+      }
+
+      if (!canPerform('view_billing')) {
+        setLoading(false);
+        setError('Insufficient permissions to view billing data');
+        return;
+      }
+
       try {
-        console.log('Fetching data from Firebase Function...');
-        const response = await fetch('https://us-central1-therapist-online.cloudfunctions.net/getSheetData');
-        const data = await response.json();
-        console.log('Raw data from Firebase:', data);
+        console.log('Fetching billing data using secure API...');
+        const data = await secureClientOperations.getAllClients();
+        console.log('Billing data received:', data);
         
         if (Array.isArray(data)) {
           setBillingData(data);
         }
         setLoading(false);
       } catch (err) {
-        console.error('Error fetching data:', err);
+        console.error('Error fetching billing data:', err);
         setError(err.message);
         setLoading(false);
       }
     };
 
     fetchData();
-  }, []);
+  }, [isAuthenticated, canPerform, secureClientOperations]);
 
   const handleClientClick = (client) => {
     setSelectedClient(client);

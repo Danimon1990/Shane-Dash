@@ -2,11 +2,21 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useSecureData } from '../hooks/useSecureData';
+import TherapyNoteForm from '../components/TherapyNoteForm';
+import TherapyNotesList from '../components/TherapyNotesList';
 
 const Clients = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { currentUser } = useAuth();
+  const { 
+    isAuthenticated, 
+    userRole, 
+    secureClientOperations,
+    canPerform 
+  } = useSecureData();
+  
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -16,6 +26,8 @@ const Clients = () => {
   const [showActiveOnly, setShowActiveOnly] = useState(true);
   const [showAllClients, setShowAllClients] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [showNoteForm, setShowNoteForm] = useState(false);
+  const [notesRefresh, setNotesRefresh] = useState(0);
 
   // Define the list of therapists to match Associates.js
   const therapistList = [
@@ -46,46 +58,30 @@ const Clients = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      try {
-        console.log('Fetching data from Firebase Function...');
-        const response = await fetch('https://us-central1-therapist-online.cloudfunctions.net/getSheetData');
-        const data = await response.json();
-        console.log('Raw data from Firebase:', data);
-        console.log('Current user for filtering:', currentUser);
-        
-        if (Array.isArray(data)) {
-          let filteredData;
-          
-          if (showAllClients) {
-            // Show all clients in creation order (original Google Sheets order)
-            filteredData = data;
-          } else {
-            // Filter clients based on user role
-            filteredData = data.filter(client => {
-              console.log('Checking client:', client, 'User role:', currentUser?.role, 'User name:', currentUser?.name);
-              if (currentUser?.role === 'admin') return true;
-              if (currentUser?.role === 'therapist') {
-                return client.therapist?.name === currentUser.name;
-              }
-              return false;
-            });
-          }
-          
-          console.log('Filtered clients:', filteredData);
-          setClients(filteredData);
-        } else {
-          console.log('Data is not an array:', data);
-        }
+      if (!isAuthenticated) {
         setLoading(false);
+        setError('Authentication required');
+        return;
+      }
+      if (!canPerform('view_clients')) {
+        setLoading(false);
+        setError('Insufficient permissions to view clients');
+        return;
+      }
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await secureClientOperations.getAllClients();
+        setClients(data);
       } catch (err) {
         console.error('Error fetching data:', err);
         setError(err.message);
+      } finally {
         setLoading(false);
       }
     };
-
     fetchData();
-  }, [currentUser, showAllClients]);
+  }, [isAuthenticated, canPerform, secureClientOperations]);
 
   // Handle client selection from Associates page
   useEffect(() => {
@@ -106,9 +102,16 @@ const Clients = () => {
 
   const handleTherapistChange = async (clientId, therapistName) => {
     try {
+      // Check permissions
+      if (!canPerform('assign_therapists')) {
+        showNotification('Insufficient permissions to assign therapists', 'error');
+        return;
+      }
+
       // Find the client to get their name for the notification
       const client = clients.find(c => c.id === clientId);
       const clientName = client ? `${client.data.firstName} ${client.data.lastName}` : 'Client';
+      const clientEmail = client?.data?.email;
       
       // Update the client's therapist in the local state
       setClients(clients.map(client => {
@@ -142,8 +145,17 @@ const Clients = () => {
         showNotification(`${clientName} has been assigned to ${therapistName}`, 'success');
       }
 
-      // TODO: Add API call to update the therapist in the backend
-      console.log(`Updating therapist for client ${clientId} to ${therapistName}`);
+      // Call the secure API to update the therapist in Google Sheets
+      if (clientEmail) {
+        try {
+          await secureClientOperations.updateClientTherapist(clientEmail, therapistName);
+        } catch (apiError) {
+          console.error('API error updating therapist:', apiError);
+          showNotification('Failed to update therapist in Google Sheets', 'error');
+        }
+      } else {
+        showNotification('Client email not found, cannot update Google Sheets', 'error');
+      }
     } catch (error) {
       console.error('Error updating therapist:', error);
       showNotification('Failed to update therapist assignment', 'error');
@@ -152,6 +164,12 @@ const Clients = () => {
 
   const handleStatusChange = async (clientId, status) => {
     try {
+      // Check permissions
+      if (!canPerform('edit_clients')) {
+        showNotification('Insufficient permissions to update client status', 'error');
+        return;
+      }
+
       // Find the client to get their name for the notification
       const client = clients.find(c => c.id === clientId);
       const clientName = client ? `${client.data.firstName} ${client.data.lastName}` : 'Client';
@@ -263,6 +281,15 @@ const Clients = () => {
         )}
 
         <div className="container mx-auto">
+          {/* Debug Info - Remove this in production */}
+          {false && process.env.NODE_ENV === 'development' && (
+            <div className="mb-4 p-3 bg-yellow-100 border border-yellow-300 rounded">
+              <strong>Debug Info:</strong> User: {currentUser?.name} | Role: {currentUser?.role} | 
+              Is Therapist by Name: {therapistList.includes(currentUser?.name) ? 'Yes' : 'No'} | 
+              Clients Count: {clients.length} | Filtered Count: {filteredClients.length}
+            </div>
+          )}
+          
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold">Clients</h1>
             <div className="flex items-center space-x-4">
@@ -302,17 +329,19 @@ const Clients = () => {
                 </button>
               </div>
               
-              {/* Show All Clients Toggle */}
-              <button
-                onClick={() => setShowAllClients(!showAllClients)}
-                className={`px-4 py-2 rounded text-sm font-medium ${
-                  showAllClients 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                {showAllClients ? 'Show My Clients' : 'Show All Clients'}
-              </button>
+              {/* Show All Clients Toggle - Only show for admin users */}
+              {currentUser?.role === 'admin' && (
+                <button
+                  onClick={() => setShowAllClients(!showAllClients)}
+                  className={`px-4 py-2 rounded text-sm font-medium ${
+                    showAllClients 
+                      ? 'bg-blue-500 text-white' 
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  {showAllClients ? 'Show My Clients' : 'Show All Clients'}
+                </button>
+              )}
             </div>
           </div>
 
@@ -698,6 +727,32 @@ const Clients = () => {
                           <div>{selectedClient.documents?.mergeStatus || 'N/A'}</div>
                         </div>
                       </div>
+
+                      <h3 className="text-lg font-medium mb-2 mt-6">Therapy Notes</h3>
+                      {currentUser?.role === 'admin' && (
+                        <div className="mb-4">
+                          {!showNoteForm && (
+                            <button
+                              onClick={() => setShowNoteForm(true)}
+                              className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                              New Therapy Note
+                            </button>
+                          )}
+                          {showNoteForm && (
+                            <TherapyNoteForm
+                              clientId={selectedClient.id}
+                              clientName={`${selectedClient.data.firstName} ${selectedClient.data.lastName}`}
+                              onClose={() => setShowNoteForm(false)}
+                              onSaved={() => {
+                                setShowNoteForm(false);
+                                setNotesRefresh(prev => prev + 1);
+                              }}
+                            />
+                          )}
+                        </div>
+                      )}
+                      <TherapyNotesList clientId={selectedClient.id} key={notesRefresh} />
                     </section>
                   )}
                 </div>
