@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { ROLES, getNavigationForRole } from '../config/roles';
 
 const ProtectedRoute = ({ children }) => {
   const { currentUser, loading } = useAuth();
@@ -34,10 +35,13 @@ const ProtectedRoute = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // If user is a billing user, restrict access to only /billing and /
-  if (currentUser?.role === 'billing') {
-    const allowedPaths = ['/', '/billing'];
+  // If user is a therapist (billing user), restrict access to only allowed paths
+  if (currentUser?.role === ROLES.THERAPIST) {
+    const allowedPaths = getNavigationForRole(ROLES.THERAPIST).map(item => item.path);
+    allowedPaths.push('/'); // Allow home page
+    
     if (!allowedPaths.includes(location.pathname)) {
+      console.log('🚫 ProtectedRoute: Billing user accessing restricted path, redirecting to billing');
       return <Navigate to="/billing" replace />;
     }
   }
