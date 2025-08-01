@@ -60,13 +60,13 @@ const ROLE_PERMISSIONS = {
     PERMISSIONS.EDIT_CLIENTS,
     PERMISSIONS.ASSIGN_THERAPISTS,
     
-    // Therapy notes
+    // Therapy notes (for assigned clients only)
     PERMISSIONS.VIEW_NOTES,
     PERMISSIONS.CREATE_NOTES,
     PERMISSIONS.EDIT_NOTES,
     PERMISSIONS.DELETE_NOTES,
     
-    // Billing
+    // Billing (therapist role is used for billing users)
     PERMISSIONS.VIEW_BILLING,
     PERMISSIONS.EDIT_BILLING,
     
@@ -85,9 +85,11 @@ const ROLE_PERMISSIONS = {
     PERMISSIONS.VIEW_CLIENTS,
     PERMISSIONS.EDIT_CLIENTS,
     
-    // Limited notes access
+    // Therapy notes (for assigned clients only)
     PERMISSIONS.VIEW_NOTES,
     PERMISSIONS.CREATE_NOTES,
+    PERMISSIONS.EDIT_NOTES,
+    PERMISSIONS.DELETE_NOTES,
     
     // Limited billing access
     PERMISSIONS.VIEW_BILLING,
@@ -102,9 +104,8 @@ const ROLE_PERMISSIONS = {
   ],
   
   [ROLES.VIEWER]: [
-    // Read-only access
+    // Read-only access to basic information
     PERMISSIONS.VIEW_CLIENTS,
-    PERMISSIONS.VIEW_NOTES,
     PERMISSIONS.VIEW_BILLING,
     PERMISSIONS.VIEW_CALENDAR,
     PERMISSIONS.VIEW_DOCUMENTS

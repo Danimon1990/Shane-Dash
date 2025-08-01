@@ -743,6 +743,7 @@ const Clients = () => {
                             <TherapyNoteForm
                               clientId={selectedClient.id}
                               clientName={`${selectedClient.data.firstName} ${selectedClient.data.lastName}`}
+                              clientData={selectedClient}
                               onClose={() => setShowNoteForm(false)}
                               onSaved={() => {
                                 setShowNoteForm(false);

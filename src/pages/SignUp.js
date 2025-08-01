@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { ROLES, getRoleDisplayName } from '../config/roles';
 
 const SignUp = () => {
   const [formData, setFormData] = useState({
@@ -43,6 +44,14 @@ const SignUp = () => {
       setLoading(false);
     }
   };
+
+  // Available roles for signup
+  const availableRoles = [
+    { value: 'therapist', label: 'Billing' },
+    { value: 'associate', label: 'Associate' },
+    { value: 'admin', label: 'Admin' },
+    { value: 'viewer', label: 'Viewer' }
+  ];
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -145,8 +154,11 @@ const SignUp = () => {
                 value={formData.role}
                 onChange={handleChange}
               >
-                <option value="therapist">Therapist</option>
-                <option value="admin">Admin</option>
+                {availableRoles.map((role) => (
+                  <option key={role.value} value={role.value}>
+                    {role.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>

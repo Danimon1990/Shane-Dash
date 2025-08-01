@@ -24,6 +24,7 @@ const Associates = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [notesRefresh, setNotesRefresh] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Define the list of therapists to match Clients.js
   const therapistList = [
@@ -36,6 +37,7 @@ const Associates = () => {
 
   const isAdmin = currentUser?.role === 'admin';
   const isTherapist = currentUser?.role === 'therapist';
+  const isBilling = currentUser?.role === 'therapist'; // Billing users use therapist role
 
   // Helper function to check if user name matches therapist name
   const namesMatch = (userName, therapistName) => {
@@ -93,6 +95,9 @@ const Associates = () => {
         
         // Use secure API client to fetch data
         const data = await secureClientOperations.getAllClients();
+        console.log('🔍 Raw client data:', data);
+        const therapistNamesFound = Array.from(new Set(data.map(client => client.therapist?.name || 'Unassigned')));
+        console.log('🔍 Therapist names found in data:', therapistNamesFound);
         
         // The data is now pre-filtered by the cloud function. 
         // We just need to group it by therapist.
@@ -234,6 +239,21 @@ const Associates = () => {
       return JSON.stringify(value) || 'N/A';
     }
     return String(value) || 'N/A';
+  };
+
+  // Filter associates based on search term
+  const filteredAssociates = associates.filter(associate => 
+    associate.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Get active clients count for an associate
+  const getActiveClientsCount = (associate) => {
+    return associate.clients.filter(client => client.active).length;
+  };
+
+  // Get total clients count for an associate
+  const getTotalClientsCount = (associate) => {
+    return associate.clients.length;
   };
 
   // Add console log for selected associate
@@ -528,6 +548,7 @@ const Associates = () => {
                     <TherapyNoteForm 
                       clientId={selectedClientDetails.id}
                       clientName={`${selectedClientDetails.data?.firstName || ''} ${selectedClientDetails.data?.lastName || ''}`.trim()}
+                      clientData={selectedClientDetails}
                       onClose={handleNoteCancel}
                       onSaved={handleNoteSaved}
                     />

@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../firebase';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, where } from 'firebase/firestore';
+import { useAuth } from '../contexts/AuthContext';
+import { useSecureData } from '../hooks/useSecureData';
 
 const TherapyNotesList = ({ clientId }) => {
+  const { currentUser } = useAuth();
+  const { userRole, canPerform } = useSecureData();
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedNote, setSelectedNote] = useState(null);
@@ -11,6 +15,13 @@ const TherapyNotesList = ({ clientId }) => {
   useEffect(() => {
     if (!clientId) {
       setNotes([]);
+      setLoading(false);
+      return;
+    }
+
+    // Check permissions before loading notes
+    if (!canPerform('view_notes')) {
+      setError('Insufficient permissions to view therapy notes');
       setLoading(false);
       return;
     }
@@ -24,7 +35,26 @@ const TherapyNotesList = ({ clientId }) => {
       
       // Create a query for the client's notes, ordered by timestamp descending (newest first)
       const notesRef = collection(db, 'clients', stringClientId, 'notes');
-      const notesQuery = query(notesRef, orderBy('timestamp', 'desc'));
+      
+      // Apply role-based filtering
+      let notesQuery;
+      
+      if (userRole === 'admin') {
+        // Admins can see all notes
+        notesQuery = query(notesRef, orderBy('timestamp', 'desc'));
+      } else if (userRole === 'therapist' || userRole === 'associate') {
+        // Therapists and associates can only see notes they created
+        notesQuery = query(
+          notesRef, 
+          where('therapistId', '==', currentUser.uid),
+          orderBy('timestamp', 'desc')
+        );
+      } else {
+        // Other roles cannot see therapy notes for HIPAA compliance
+        setError('Access denied: Therapy notes are restricted to authorized personnel');
+        setLoading(false);
+        return;
+      }
 
       // Subscribe to real-time updates
       const unsubscribe = onSnapshot(
@@ -52,7 +82,7 @@ const TherapyNotesList = ({ clientId }) => {
       setError('Failed to load therapy notes');
       setLoading(false);
     }
-  }, [clientId]);
+  }, [clientId, userRole, currentUser, canPerform]);
 
   const formatDate = (date) => {
     if (!date) return 'Unknown date';

@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { db } from '../firebase';
 import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
+import { useSecureData } from '../hooks/useSecureData';
 
-const TherapyNoteForm = ({ clientId, clientName, onClose, onSaved }) => {
+const TherapyNoteForm = ({ clientId, clientName, onClose, onSaved, clientData }) => {
   const { currentUser } = useAuth();
+  const { canPerform, userRole } = useSecureData();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [note, setNote] = useState({
@@ -26,10 +28,34 @@ const TherapyNoteForm = ({ clientId, clientName, onClose, onSaved }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Check permissions before allowing note creation
+    if (!canPerform('create_notes')) {
+      setError('Insufficient permissions to create therapy notes');
+      return;
+    }
+    
+    // Check if user is assigned to this client (for non-admin users)
+    if (userRole !== 'admin' && clientData) {
+      const assignedTherapist = clientData.therapist?.name;
+      const currentUserName = currentUser.name || currentUser.displayName;
+      
+      if (assignedTherapist !== currentUserName) {
+        setError('You can only create notes for clients assigned to you');
+        return;
+      }
+    }
+    
     if (!note.subject.trim()) {
       setError('Subject is required');
       return;
     }
+    
+    // Debug logging
+    console.log('🔍 TherapyNoteForm - clientId type:', typeof clientId, 'value:', clientId);
+    console.log('🔍 TherapyNoteForm - clientName:', clientName);
+    console.log('🔍 TherapyNoteForm - userRole:', userRole);
+    console.log('🔍 TherapyNoteForm - assignedTherapist:', clientData?.therapist?.name);
+    console.log('🔍 TherapyNoteForm - currentUserName:', currentUser.name || currentUser.displayName);
     
     setIsSubmitting(true);
     setError(null);
@@ -42,8 +68,12 @@ const TherapyNoteForm = ({ clientId, clientName, onClose, onSaved }) => {
       const timestamp = new Date().getTime();
       const noteId = `${lastName}_${timestamp}`;
       
+      // Ensure clientId is a string for Firestore
+      const clientIdString = String(clientId);
+      console.log('🔍 TherapyNoteForm - clientIdString:', clientIdString);
+      
       // Create a reference to the notes subcollection for this client
-      const notesCollectionRef = collection(db, 'clients', clientId, 'notes');
+      const notesCollectionRef = collection(db, 'clients', clientIdString, 'notes');
       
       // Create a document with the unique ID
       const noteRef = doc(notesCollectionRef, noteId);
@@ -51,7 +81,7 @@ const TherapyNoteForm = ({ clientId, clientName, onClose, onSaved }) => {
       // Set the document data
       await setDoc(noteRef, {
         ...note,
-        clientId,
+        clientId: clientIdString,
         therapistId: currentUser.uid,
         therapistName: currentUser.name,
         timestamp: serverTimestamp(),

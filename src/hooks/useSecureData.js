@@ -10,42 +10,72 @@ export const useSecureData = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState(null);
   const [userPermissions, setUserPermissions] = useState([]);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Initialize authentication and RBAC
   useEffect(() => {
-    if (currentUser) {
-      setIsAuthenticated(true);
-      rbac.setUser(currentUser);
-      setUserRole(rbac.getUserRole());
-      setUserPermissions(rbac.getUserPermissions());
-    } else {
-      setIsAuthenticated(false);
-      setUserRole(null);
-      setUserPermissions([]);
-    }
+    const initializeAuth = async () => {
+      if (currentUser) {
+        console.log('🔍 Initializing auth for user:', currentUser.email, 'role:', currentUser.role);
+        
+        // Set user in RBAC system
+        rbac.setUser(currentUser);
+        setUserRole(rbac.getUserRole());
+        setUserPermissions(rbac.getUserPermissions());
+        
+        // Check if we have a valid token
+        try {
+          const token = await authTokenManager.getValidAccessToken();
+          const hasToken = !!token;
+          console.log('🔍 Token check result:', hasToken);
+          setIsAuthenticated(hasToken);
+        } catch (error) {
+          console.log('❌ Token check failed:', error.message);
+          setIsAuthenticated(false);
+        }
+      } else {
+        console.log('❌ No current user, setting auth to false');
+        setIsAuthenticated(false);
+        setUserRole(null);
+        setUserPermissions([]);
+      }
+      
+      setIsInitialized(true);
+    };
+
+    initializeAuth();
   }, [currentUser]);
 
   // Secure data fetching with authentication
   const fetchSecureData = useCallback(async (url, options = {}) => {
     try {
+      // Wait for initialization
+      if (!isInitialized) {
+        console.log('⏳ Waiting for auth initialization...');
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
       // Check authentication
       if (!isAuthenticated) {
+        console.log('❌ Not authenticated in fetchSecureData');
         throw new Error('Authentication required');
       }
 
       // Check if token is valid
       const token = await authTokenManager.getValidAccessToken();
       if (!token) {
+        console.log('❌ No valid token in fetchSecureData');
         throw new Error('Invalid or expired token');
       }
 
+      console.log('✅ Making secure API call');
       // Make secure API call
       return await secureApiClient.makeSecureRequest(url, options);
     } catch (error) {
       console.error('Secure data fetch failed:', error);
       throw error;
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isInitialized]);
 
   // Get filtered client data based on user role
   const getFilteredClientData = useCallback((clientData) => {
@@ -225,6 +255,7 @@ export const useSecureData = () => {
     isAuthenticated,
     userRole,
     userPermissions,
+    isInitialized,
     
     // Permission checks
     canPerform,
