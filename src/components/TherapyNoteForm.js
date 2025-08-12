@@ -61,12 +61,15 @@ const TherapyNoteForm = ({ clientId, clientName, onClose, onSaved, clientData })
     setError(null);
     
     try {
-      // Extract lastName from clientName
-      const lastName = clientName.split(' ').pop();
+      // Extract names for better note identification
+      const nameParts = clientName.trim().split(' ');
+      const clientLastName = nameParts.pop() || '';
+      const clientFirstName = nameParts.join(' ') || '';
       
-      // Create a unique ID by combining lastName with timestamp
+      // Create a unique ID: associateName_clientName_timestamp
+      const associateName = currentUser.name || currentUser.displayName || 'Unknown';
       const timestamp = new Date().getTime();
-      const noteId = `${lastName}_${timestamp}`;
+      const noteId = `${associateName}_${clientFirstName}_${clientLastName}_${timestamp}`;
       
       // Ensure clientId is a string for Firestore
       const clientIdString = String(clientId);
