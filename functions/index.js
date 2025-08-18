@@ -4,6 +4,7 @@ const admin = require("firebase-admin");
 const cors = require("cors")({
   origin: [
     'http://localhost:3000',
+    'http://localhost:3001',
     'https://therapist-online.web.app',
     'https://therapist-online.firebaseapp.com'
   ],
@@ -145,12 +146,22 @@ const getSheetDataHandler = async (req, res) => {
     
     if (rows && rows.length) {
       console.log(`Processing ${rows.length} rows.`);
+      
+      // Debug: Log the first few rows to see what's in the concerns columns
+      if (rows.length > 0) {
+        console.log('Sample row concerns data:');
+        console.log('Column AW (row[48]):', rows[0][48]);
+        console.log('Column AX (row[49]):', rows[0][49]);
+        console.log('Column AY (row[50]):', rows[0][50]);
+      }
+      
       const formattedClients = rows.map((row, index) => ({
         id: index + 1,
         name: `${row[2] || ''} ${row[4] || ''}`.trim(), // Preferred Name + Legal Last Name
         active: true,
         data: {
           firstName: row[2] || '', // Preferred Name
+          preferredName: row[2] || '', // Preferred Name (same as firstName for now)
           lastName: row[4] || '', // Legal Last Name
           email: row[1] || 'N/A', // Email Address
           phone: row[5] || 'N/A', // Phone Number
@@ -167,10 +178,8 @@ const getSheetDataHandler = async (req, res) => {
           },
           maritalStatus: row[13] || 'N/A', // Marital Status
           gender: row[14] || 'N/A', // Gender/Preferred Pronoun
-          employment: {
-            status: row[15] || 'N/A', // Employment Status
-            employer: row[16] || 'N/A' // Employer/School
-          },
+          employmentStatus: row[15] || 'N/A', // Employment Status
+          employer: row[16] || 'N/A', // Employer/School
           referralSource: row[17] || 'N/A', // Referral Source
           reasonForReachingOut: row[18] || 'N/A', // Reason for reaching out
           medications: {
@@ -181,45 +190,62 @@ const getSheetDataHandler = async (req, res) => {
         insurance: {
           paymentOption: row[21] || 'N/A', // Payment Options
           privatePayRate: row[22] || 'N/A', // Private Pay Rate
+          agreedAmount: row[42] || 'N/A', // Agreed amount (moved from billing)
           provider: row[23] || 'N/A', // Insurance Provider
-          isPrimary: row[24] || 'N/A', // Are you the primary or dependent?
+          primaryOrDependent: row[24] || 'N/A', // Are you the primary or dependent?
           planName: row[25] || 'N/A', // Insurance Plan Name
           memberId: row[26] || 'N/A', // Member ID/Policy Number
           groupNumber: row[27] || 'N/A', // Group Number
-          phoneNumber: row[28] || 'N/A', // Insurance Phone Number
+          phone: row[28] || 'N/A', // Insurance Phone Number (fixed field name)
           deductible: row[29] || 'N/A', // Deductible Amount
           copay: row[30] || 'N/A', // Copay Amount
-          outOfPocket: row[31] || 'N/A' // Out-of-pocket Amount
-        },
-        billing: {
+          outOfPocket: row[31] || 'N/A', // Out-of-pocket Amount
+          // Credit card info moved here to match frontend expectations
           cardName: row[32] || 'N/A', // Name (as it appears on card)
           cardType: row[33] || 'N/A', // Credit Card Type
           cardNumber: row[34] || 'N/A', // Credit Card Number
           cardExpiration: row[35] || 'N/A', // Credit Card Expiration Date
-          cardSecurityCode: row[36] || 'N/A', // 3-Digit Security Code
-          billingZipCode: row[37] || 'N/A', // Billing Zip Code
-          cardAuthorization: row[38] || 'N/A', // Credit Card Authorization
-          agreedToPolicies: row[39] || 'N/A', // Agreed to policies
-          agreedToCancellation: row[40] || 'N/A', // Agreed to cancellation policy
-          agreedToPrivacy: row[41] || 'N/A', // Agreed to privacy policy
-          agreedAmount: row[42] || 'N/A', // Agreed amount
-          signature: row[43] || 'N/A', // Full name signature
-          signatureDate: row[44] || 'N/A' // Today's Date
+          billingZip: row[37] || 'N/A' // Billing Zip Code
+        },
+        agreements: {
+          policies: row[39] === 'true' || row[39] === 'Yes', // Agreed to policies
+          cancellation: row[40] === 'true' || row[40] === 'Yes', // Agreed to cancellation policy
+          privacy: row[41] === 'true' || row[41] === 'Yes' // Agreed to privacy policy
         },
         medical: {
           physicianName: row[45] || 'N/A', // Physician/Medical Professional's Name
           physicianPhone: row[46] || 'N/A', // Physician/Medical Professional's Contact Number
-          physicianAddress: row[47] || 'N/A' // Physician/Medical Professional's Office Address
+          physicianAddress: row[47] || 'N/A', // Physician/Medical Professional's Office Address
+          medications: row[20] || 'N/A' // Please list current medications (moved here to match frontend)
         },
         concerns: {
-          selectedConcerns: row[48] || 'N/A', // Checked concerns
-          otherConcerns: row[49] || 'N/A', // Any other issues or concerns
-          primaryConcern: row[50] || 'N/A' // Most important concern
+          reportedConcerns: (() => {
+            const rawValue = row[48];
+            console.log(`Client ${index + 1} - Column AW raw value:`, rawValue);
+            if (typeof rawValue !== 'string') {
+              console.log(`Client ${index + 1} - No concerns found in column AW`);
+              return [];
+            }
+            const normalized = rawValue.replace(/\u00A0/g, ' ').trim();
+            if (!normalized) {
+              console.log(`Client ${index + 1} - No concerns found in column AW`);
+              return [];
+            }
+            const cleaned = normalized.replace(/^"|"$/g, '');
+            const concerns = cleaned
+              .split(/[\n;,]+/)
+              .map(c => c.trim())
+              .filter(Boolean);
+            console.log(`Client ${index + 1} - Parsed concerns:`, concerns);
+            return concerns;
+          })(),
+          otherConcerns: row[49] || 'No', // Column AX (50th) - "Any other issues or concerns?"
+          primaryConcern: row[50] || 'N/A', // Column AY (51st) - "Please look back over the concerns you have checked and choose the one you would like the MOST help with. Feel free to write a short description detailing your reasoning"
+          primaryDescription: row[50] || 'No description provided' // Using same field for now
         },
         documents: {
-          mergedDocId: row[51] || 'N/A', // Merged Doc ID
-          mergedDocUrl: row[52] || 'N/A', // Merged Doc URL
-          mergedDocLink: row[53] || 'N/A', // Link to merged Doc
+          chartId: row[51] || 'N/A', // Merged Doc ID
+          chartUrl: row[52] || 'N/A', // Merged Doc URL
           mergeStatus: row[54] || 'N/A' // Document Merge Status
         },
         therapist: {
@@ -239,24 +265,24 @@ const getSheetDataHandler = async (req, res) => {
         // Filter sensitive data based on user role
         if (req.userRole === 'associate') {
           // Associates can't see medical or detailed billing info
-          const { medical, billing, ...filteredClient } = client;
+          const { medical, insurance, ...filteredClient } = client;
           return {
             ...filteredClient,
-            billing: {
-              paymentOption: billing.paymentOption,
-              provider: billing.provider,
-              planName: billing.planName
+            insurance: {
+              paymentOption: insurance.paymentOption,
+              provider: insurance.provider,
+              planName: insurance.planName
             }
           };
         } else if (req.userRole === 'therapist') {
           // Therapists can't see detailed financial info
-          const { billing, ...filteredClient } = client;
+          const { insurance, ...filteredClient } = client;
           return {
             ...filteredClient,
-            billing: {
-              paymentOption: billing.paymentOption,
-              provider: billing.provider,
-              planName: billing.planName
+            insurance: {
+              paymentOption: insurance.paymentOption,
+              provider: insurance.provider,
+              planName: insurance.planName
             }
           };
         }

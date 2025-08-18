@@ -684,30 +684,38 @@ const Clients = () => {
                         </div>
                       </div>
 
-                      <h3 className="text-lg font-medium mb-2 mt-6">Concerns</h3>
+                      <h3 className="text-lg font-medium mb-2 mt-6">Therapy-Relevant Concerns</h3>
                       <div className="space-y-4">
                         <div>
-                          <label className="text-sm text-gray-500">Selected Concerns</label>
+                          <label className="text-sm text-gray-500">Reported Concerns</label>
                           <div className="mt-1">
-                            {selectedClient.concerns?.selected?.map((concern, index) => (
-                              <span key={index} className="inline-block bg-gray-100 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2 mb-2">
-                                {concern}
-                              </span>
-                            ))}
+                            {selectedClient.concerns?.reportedConcerns?.length > 0 ? (
+                              selectedClient.concerns.reportedConcerns.map((concern, index) => (
+                                <span key={index} className="inline-block bg-blue-100 rounded-full px-3 py-1 text-sm font-semibold text-blue-700 mr-2 mb-2">
+                                  {concern}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-gray-500 italic">No specific concerns reported</span>
+                            )}
                           </div>
                         </div>
                         <div>
-                          <label className="text-sm text-gray-500">Other Concerns</label>
-                          <div className="whitespace-pre-wrap">{selectedClient.concerns?.other || 'No'}</div>
+                          <label className="text-sm text-gray-500">Additional Issues or Concerns</label>
+                          <div className="whitespace-pre-wrap p-3 bg-gray-50 rounded-lg">
+                            {selectedClient.concerns?.otherConcerns || 'No additional concerns reported'}
+                          </div>
                         </div>
                         <div>
-                          <label className="text-sm text-gray-500">Primary Concern</label>
-                          <div className="mt-1 whitespace-pre-wrap">{selectedClient.concerns?.primary}</div>
+                          <label className="text-sm text-gray-500">Primary Concern (Most Important)</label>
+                          <div className="mt-1 p-3 bg-yellow-50 rounded-lg border-l-4 border-yellow-400">
+                            <div className="font-medium text-yellow-800">{selectedClient.concerns?.primaryConcern || 'No primary concern specified'}</div>
+                          </div>
                         </div>
                         <div>
                           <label className="text-sm text-gray-500">Primary Concern Description</label>
-                          <div className="mt-1 p-4 bg-gray-50 rounded-lg whitespace-pre-wrap">
-                            {selectedClient.concerns?.primaryDescription || 'No description provided'}
+                          <div className="mt-1 p-4 bg-gray-50 rounded-lg whitespace-pre-wrap border-l-4 border-blue-400">
+                            {selectedClient.concerns?.primaryDescription || 'No detailed description provided'}
                           </div>
                         </div>
                       </div>

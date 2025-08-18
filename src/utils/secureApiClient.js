@@ -4,11 +4,21 @@ class SecureApiClient {
   constructor() {
     this.baseURLs = {
       cloudFunctions: {
-        getSheetData: 'https://getsheetdata-ccl4wg6xia-uc.a.run.app',
-        updateClientTherapist: 'https://updateclienttherapist-ccl4wg6xia-uc.a.run.app',
-        updateClientStatus: 'https://updateclientstatus-ccl4wg6xia-uc.a.run.app',
-        updateUserRole: 'https://updateuserrole-ccl4wg6xia-uc.a.run.app',
-        createUserProfile: 'https://createuserprofile-ccl4wg6xia-uc.a.run.app'
+        getSheetData: process.env.REACT_APP_USE_LOCAL_FUNCTIONS === 'true'
+          ? 'http://127.0.0.1:5001/therapist-online/us-central1/getSheetData'
+          : 'https://getsheetdata-ccl4wg6xia-uc.a.run.app',
+        updateClientTherapist: process.env.REACT_APP_USE_LOCAL_FUNCTIONS === 'true'
+          ? 'http://127.0.0.1:5001/therapist-online/us-central1/updateClientTherapist'
+          : 'https://updateclienttherapist-ccl4wg6xia-uc.a.run.app',
+        updateClientStatus: process.env.REACT_APP_USE_LOCAL_FUNCTIONS === 'true'
+          ? 'http://127.0.0.1:5001/therapist-online/us-central1/updateClientStatus'
+          : 'https://updateclientstatus-ccl4wg6xia-uc.a.run.app',
+        updateUserRole: process.env.REACT_APP_USE_LOCAL_FUNCTIONS === 'true'
+          ? 'http://127.0.0.1:5001/therapist-online/us-central1/updateUserRole'
+          : 'https://updateuserrole-ccl4wg6xia-uc.a.run.app',
+        createUserProfile: process.env.REACT_APP_USE_LOCAL_FUNCTIONS === 'true'
+          ? 'http://127.0.0.1:5001/therapist-online/us-central1/createUserProfile'
+          : 'https://createuserprofile-ccl4wg6xia-uc.a.run.app'
       }
     };
   }
