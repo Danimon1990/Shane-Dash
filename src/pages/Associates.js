@@ -19,12 +19,14 @@ const Associates = () => {
   
   const [associates, setAssociates] = useState([]);
   const [selectedAssociate, setSelectedAssociate] = useState(null);
+  const [selectedClient, setSelectedClient] = useState(null);
   const [selectedClientDetails, setSelectedClientDetails] = useState(null);
   const [showNoteForm, setShowNoteForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [notesRefresh, setNotesRefresh] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('data');
 
   // Define the list of therapists to match Clients.js
   const therapistList = [
@@ -37,7 +39,6 @@ const Associates = () => {
 
   const isAdmin = currentUser?.role === 'admin';
   const isTherapist = currentUser?.role === 'therapist';
-  const isBilling = currentUser?.role === 'therapist'; // Billing users use therapist role
 
   // Helper function to check if user name matches therapist name
   const namesMatch = (userName, therapistName) => {
@@ -74,6 +75,10 @@ const Associates = () => {
   };
 
   const userTherapistName = getUserTherapistName();
+  
+  // Check if user is an actual therapist (name matches therapist list) or a billing user
+  const isActualTherapist = userTherapistName !== null;
+  const isBillingUser = isTherapist && !isActualTherapist; // Has therapist role but not in therapist list
 
   useEffect(() => {
     const fetchData = async () => {
@@ -109,7 +114,7 @@ const Associates = () => {
             clients: []
           });
         });
-        if (isAdmin) {
+        if (isAdmin || isBillingUser) {
           therapistMap.set('Unassigned', {
             id: 'Unassigned',
             name: 'Unassigned',
@@ -130,7 +135,12 @@ const Associates = () => {
         });
         
         const therapists = Array.from(therapistMap.values())
-            .filter(t => isAdmin || t.name === userTherapistName) // Only show relevant therapists
+            .filter(t => {
+              // Admin and billing users see all therapists
+              if (isAdmin || isBillingUser) return true;
+              // Actual therapists only see their own clients
+              return t.name === userTherapistName;
+            })
             .sort((a, b) => {
               if (a.name === 'Unassigned') return 1;
               if (b.name === 'Unassigned') return -1;
@@ -138,7 +148,7 @@ const Associates = () => {
             });
             
         setAssociates(therapists);
-        if (isTherapist && !isAdmin && therapists.length === 1) {
+        if (isActualTherapist && !isAdmin && therapists.length === 1) {
             setSelectedAssociate(therapists[0]);
         }
       } catch (err) {
@@ -150,15 +160,17 @@ const Associates = () => {
     };
 
     fetchData();
-  }, [isAuthenticated, canPerform, secureClientOperations, isAdmin, isTherapist, userTherapistName]);
+  }, [isAuthenticated, canPerform, secureClientOperations, isAdmin, isBillingUser, isActualTherapist, userTherapistName]);
 
   const handleClientClick = async (client) => {
-    // For therapist users, show client details in a modal since they can't access Clients page
-    if (isTherapist && !isAdmin) {
-      console.log('Therapist clicked on client:', client);
-      console.log('Client data structure:', client.clientData);
-      
-      // Ensure the client exists in Firestore for therapy notes
+    console.log('Client clicked:', client);
+    
+    // For all users in Associates page, show client details in third column instead of navigating
+    setSelectedClient(client.clientData);
+    setActiveTab('data'); // Reset to data tab when new client is selected
+    
+    // For actual therapist users, also ensure client exists in Firestore for therapy notes
+    if (isActualTherapist && !isAdmin && !isBillingUser) {
       const success = await ensureClientInFirestore(client.clientData);
       
       if (success) {
@@ -169,14 +181,6 @@ const Associates = () => {
       } else {
         console.error('Failed to ensure client in Firestore');
       }
-    } else {
-      // Admin users can navigate to clients page
-      navigate('/clients', { 
-        state: { 
-          selectedClient: client.clientData,
-          scrollToClient: true
-        }
-      });
     }
   };
 
@@ -261,6 +265,15 @@ const Associates = () => {
     console.log('Selected associate changed:', selectedAssociate);
   }, [selectedAssociate]);
 
+  // Format currency helper
+  const formatCurrency = (amount) => {
+    if (!amount) return 'N/A';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount);
+  };
+
   if (loading) {
     return (
       <div className="flex">
@@ -281,33 +294,17 @@ const Associates = () => {
     <div className="flex">
       <div className="flex-1 p-8">
         <div className="container mx-auto">
-          {/* Debug Info - Remove this in production */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="mb-4 p-3 bg-yellow-100 border border-yellow-300 rounded text-xs">
-              <strong>Debug Info:</strong><br/>
-              User: "{currentUser?.name}" | Role: {currentUser?.role} | 
-              Is Therapist: {isTherapist ? 'Yes' : 'No'} | Is Admin: {isAdmin ? 'Yes' : 'No'}<br/>
-              User Therapist Name: "{userTherapistName}" | 
-              Therapist List: {JSON.stringify(therapistList)}<br/>
-              Associates Count: {associates.length} | 
-              Selected Associate: {selectedAssociate?.name} | 
-              Selected Associate Clients: {selectedAssociate?.clients?.length || 0}<br/>
-              User Email: {currentUser?.email} | 
-              User UID: {currentUser?.uid}
-            </div>
-          )}
-          
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold">
-              {isTherapist && !isAdmin ? 'My Clients' : 'Therapists'}
+              {isActualTherapist && !isAdmin && !isBillingUser ? 'My Clients' : 'Associates'}
             </h1>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className={`grid gap-6 ${selectedClient ? 'grid-cols-1 lg:grid-cols-12' : 'grid-cols-1 md:grid-cols-3'}`}>
             {/* Therapists List */}
-            <div className="md:col-span-1 bg-white rounded-lg shadow p-4">
+            <div className={`bg-white rounded-lg shadow p-4 ${selectedClient ? 'lg:col-span-3' : 'md:col-span-1'}`}>
               <h2 className="text-xl font-semibold mb-4">
-                {isTherapist && !isAdmin ? 'My Profile' : 'Therapists List'}
+                Associates ({associates.length})
               </h2>
               <div className="space-y-2">
                 {associates.map(therapist => (
@@ -334,61 +331,292 @@ const Associates = () => {
 
             {/* Therapist Details */}
             {selectedAssociate && (
-              <div className="md:col-span-2 bg-white rounded-lg shadow p-4">
+              <div className={`bg-white rounded-lg shadow p-4 ${selectedClient ? 'lg:col-span-4' : 'md:col-span-2'}`}>
                 <h2 className="text-xl font-semibold mb-4">
-                  {isTherapist && !isAdmin ? 'My Details & Clients' : 'Therapist Details'}
+                  {selectedAssociate.name} - Clients ({selectedAssociate.clients.length})
                 </h2>
-                <div className="space-y-6">
-                  {/* Profile Data Section */}
-                  <section>
-                    <h3 className="text-lg font-medium mb-2">Profile Data</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm text-gray-500">Name</label>
-                        <div>{selectedAssociate.name}</div>
-                      </div>
-                      <div>
-                        <label className="text-sm text-gray-500">Email</label>
-                        <div>{selectedAssociate.email}</div>
-                      </div>
-                      <div>
-                        <label className="text-sm text-gray-500">Phone</label>
-                        <div>{selectedAssociate.phone}</div>
-                      </div>
+                <div className="space-y-2">
+                  {selectedAssociate.clients.length === 0 ? (
+                    <div className="text-gray-500 text-center py-8">
+                      No clients assigned to {selectedAssociate.name}
                     </div>
-                  </section>
-
-                  {/* Clients Section */}
-                  <section>
-                    <h3 className="text-lg font-medium mb-2">Clients</h3>
-                    <div className="space-y-2">
-                      {selectedAssociate.clients.map(client => (
-                        <div
-                          key={client.id}
-                          className={`p-3 bg-gray-50 rounded cursor-pointer hover:bg-gray-100 transition-colors ${
-                            !client.active ? 'opacity-50' : ''
-                          }`}
-                          onClick={() => handleClientClick(client)}
-                        >
-                          <div className="font-medium">{client.name}</div>
-                          <div className="text-sm text-gray-500">
-                            Insurance: {client.insurance}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            Phone: {client.phone}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            Email: {client.email}
-                          </div>
-                          {!client.active && (
-                            <div className="text-sm text-red-500 mt-1">
-                              Inactive
-                            </div>
-                          )}
+                  ) : (
+                    selectedAssociate.clients.map(client => (
+                      <div
+                        key={client.id}
+                        className={`p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors ${
+                          !client.active ? 'opacity-50' : ''
+                        }`}
+                        onClick={() => handleClientClick(client)}
+                      >
+                        <div className="font-medium text-lg">{client.name}</div>
+                        <div className="text-sm text-gray-500 mt-1">
+                          Insurance: {client.clientData?.insurance?.provider || 'N/A'}
                         </div>
-                      ))}
+                        <div className="text-sm text-gray-500">
+                          Phone: {client.clientData?.data?.phone || 'N/A'}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          Email: {client.clientData?.data?.email || 'N/A'}
+                        </div>
+                        <div className={`text-sm mt-2 ${
+                          client.active ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          Status: {client.active ? 'Active' : 'Inactive'}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Client Details - Third Column */}
+            {selectedClient && (
+              <div className="lg:col-span-5 bg-white rounded-lg shadow p-4">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-semibold">
+                    {selectedClient.data?.firstName} {selectedClient.data?.lastName}
+                  </h2>
+                  <button
+                    onClick={() => setSelectedClient(null)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Tabs */}
+                <div className="border-b border-gray-200 mb-6">
+                  <nav className="-mb-px flex space-x-8">
+                    <button
+                      onClick={() => setActiveTab('data')}
+                      className={`${
+                        activeTab === 'data'
+                          ? 'border-indigo-500 text-indigo-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                    >
+                      Client Data
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('insurance')}
+                      className={`${
+                        activeTab === 'insurance'
+                          ? 'border-indigo-500 text-indigo-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                    >
+                      Insurance & Billing
+                    </button>
+                  </nav>
+                </div>
+
+                {/* Tab Content */}
+                <div className="space-y-6 max-h-96 overflow-y-auto">
+                  {activeTab === 'data' && (
+                    <div className="space-y-6">
+                      {/* Basic Information */}
+                      <section>
+                        <h3 className="text-lg font-medium mb-4 text-indigo-600">Basic Information</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm text-gray-500">First Name</label>
+                            <div className="font-medium">{selectedClient.data?.firstName || 'N/A'}</div>
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-500">Last Name</label>
+                            <div className="font-medium">{selectedClient.data?.lastName || 'N/A'}</div>
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-500">Email</label>
+                            <div className="font-medium">{selectedClient.data?.email || 'N/A'}</div>
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-500">Phone</label>
+                            <div className="font-medium">{selectedClient.data?.phone || 'N/A'}</div>
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-500">Date of Birth</label>
+                            <div className="font-medium">{selectedClient.data?.birthDate || 'N/A'}</div>
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-500">Gender/Preferred Pronoun</label>
+                            <div className="font-medium">{selectedClient.data?.gender || 'N/A'}</div>
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-500">Marital Status</label>
+                            <div className="font-medium">{selectedClient.data?.maritalStatus || 'N/A'}</div>
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-500">Employment Status</label>
+                            <div className="font-medium">{selectedClient.data?.employmentStatus || 'N/A'}</div>
+                          </div>
+                        </div>
+                      </section>
+
+                      {/* Address Information */}
+                      <section>
+                        <h3 className="text-lg font-medium mb-4 text-indigo-600">Address Information</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm text-gray-500">Street Address</label>
+                            <div className="font-medium">{selectedClient.data?.address?.street || 'N/A'}</div>
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-500">City</label>
+                            <div className="font-medium">{selectedClient.data?.address?.city || 'N/A'}</div>
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-500">State</label>
+                            <div className="font-medium">{selectedClient.data?.address?.state || 'N/A'}</div>
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-500">ZIP Code</label>
+                            <div className="font-medium">{selectedClient.data?.address?.zipCode || 'N/A'}</div>
+                          </div>
+                        </div>
+                      </section>
+
+                      {/* Emergency Contact */}
+                      <section>
+                        <h3 className="text-lg font-medium mb-4 text-indigo-600">Emergency Contact</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm text-gray-500">Name</label>
+                            <div className="font-medium">{selectedClient.data?.emergencyContact?.name || 'N/A'}</div>
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-500">Phone</label>
+                            <div className="font-medium">{selectedClient.data?.emergencyContact?.phone || 'N/A'}</div>
+                          </div>
+                        </div>
+                      </section>
+
+                      {/* Therapist Assignment */}
+                      <section>
+                        <h3 className="text-lg font-medium mb-4 text-indigo-600">Therapist Assignment</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm text-gray-500">Assigned Therapist</label>
+                            <div className="font-medium">{selectedClient.therapist?.name || 'Unassigned'}</div>
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-500">Status</label>
+                            <div className={`font-medium ${
+                              selectedClient.therapist?.status === 'Active' 
+                                ? 'text-green-600' 
+                                : 'text-red-600'
+                            }`}>
+                              {selectedClient.therapist?.status || 'Inactive'}
+                            </div>
+                          </div>
+                        </div>
+                      </section>
                     </div>
-                  </section>
+                  )}
+
+                  {activeTab === 'insurance' && (
+                    <div className="space-y-6">
+                      {/* Payment Information */}
+                      <section>
+                        <h3 className="text-lg font-medium mb-4 text-indigo-600">Payment Information</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm text-gray-500">Payment Option</label>
+                            <div className="font-medium">{selectedClient.insurance?.paymentOption || 'N/A'}</div>
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-500">Private Pay Rate</label>
+                            <div className="font-medium">{formatCurrency(selectedClient.insurance?.privatePayRate)}</div>
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-500">Agreed Payment Amount</label>
+                            <div className="font-medium">{formatCurrency(selectedClient.insurance?.agreedAmount)}</div>
+                          </div>
+                        </div>
+                      </section>
+
+                      {/* Insurance Information */}
+                      <section>
+                        <h3 className="text-lg font-medium mb-4 text-indigo-600">Insurance Details</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm text-gray-500">Provider</label>
+                            <div className="font-medium">{selectedClient.insurance?.provider || 'Private Pay'}</div>
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-500">Plan Name</label>
+                            <div className="font-medium">{selectedClient.insurance?.planName || 'N/A'}</div>
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-500">Member ID</label>
+                            <div className="font-medium">{selectedClient.insurance?.memberId || 'N/A'}</div>
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-500">Group Number</label>
+                            <div className="font-medium">{selectedClient.insurance?.groupNumber || 'N/A'}</div>
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-500">Primary/Dependent</label>
+                            <div className="font-medium">{selectedClient.insurance?.primaryOrDependent || 'N/A'}</div>
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-500">Insurance Phone</label>
+                            <div className="font-medium">{selectedClient.insurance?.phone || 'N/A'}</div>
+                          </div>
+                        </div>
+                      </section>
+
+                      {/* Financial Details */}
+                      <section>
+                        <h3 className="text-lg font-medium mb-4 text-indigo-600">Financial Details</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="text-sm text-gray-500">Deductible</label>
+                            <div className="font-medium">{formatCurrency(selectedClient.insurance?.deductible)}</div>
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-500">Copay</label>
+                            <div className="font-medium">{formatCurrency(selectedClient.insurance?.copay)}</div>
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-500">Out-of-Pocket Max</label>
+                            <div className="font-medium">{formatCurrency(selectedClient.insurance?.outOfPocket)}</div>
+                          </div>
+                        </div>
+                      </section>
+
+                      {/* Credit Card Information */}
+                      <section>
+                        <h3 className="text-lg font-medium mb-4 text-indigo-600">Credit Card Information</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm text-gray-500">Name on Card</label>
+                            <div className="font-medium">{selectedClient.insurance?.cardName || 'N/A'}</div>
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-500">Card Type</label>
+                            <div className="font-medium">{selectedClient.insurance?.cardType || 'N/A'}</div>
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-500">Card Number</label>
+                            <div className="font-medium">
+                              {selectedClient.insurance?.cardNumber ? '••••' + selectedClient.insurance.cardNumber.slice(-4) : 'N/A'}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-500">Expiration</label>
+                            <div className="font-medium">{selectedClient.insurance?.cardExpiration || 'N/A'}</div>
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-500">Billing ZIP</label>
+                            <div className="font-medium">{selectedClient.insurance?.billingZip || 'N/A'}</div>
+                          </div>
+                        </div>
+                      </section>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
