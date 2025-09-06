@@ -1,0 +1,82 @@
+
+> functions@1.0.0 serve
+> firebase emulators:start --only functions
+
+i  emulators: Starting emulators: functions
+⚠  emulators: It seems that you are running multiple instances of the emulator suite for project therapist-online. This may result in unexpected behavior.
+⚠  functions: The following emulators are not running, calls to these services from the Functions emulator will affect production: apphosting, auth, firestore, database, hosting, pubsub, storage, dataconnect
+i  functions: Watching "/Users/danimore/Documents/Shane/dash-shane/functions" for Cloud Functions...
+⚠  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory.
+⚠  functions: Please note that there will be breaking changes when you upgrade.
+✔  functions: Using node@20 from host.
+Serving at port 8486
+
+✔  functions: Loaded functions definitions from source: getSheetData, updateClientTherapist, updateClientStatus, updateUserRole, createUserProfile, getAllUsers.
+✔  functions[us-central1-getSheetData]: http function initialized (http://127.0.0.1:5001/therapist-online/us-central1/getSheetData).
+✔  functions[us-central1-updateClientTherapist]: http function initialized (http://127.0.0.1:5001/therapist-online/us-central1/updateClientTherapist).
+✔  functions[us-central1-updateClientStatus]: http function initialized (http://127.0.0.1:5001/therapist-online/us-central1/updateClientStatus).
+✔  functions[us-central1-updateUserRole]: http function initialized (http://127.0.0.1:5001/therapist-online/us-central1/updateUserRole).
+✔  functions[us-central1-createUserProfile]: http function initialized (http://127.0.0.1:5001/therapist-online/us-central1/createUserProfile).
+✔  functions[us-central1-getAllUsers]: http function initialized (http://127.0.0.1:5001/therapist-online/us-central1/getAllUsers).
+
+[90m┌─────────────────────────────────────────────────────────────┐[39m
+[90m│[39m ✔  All emulators ready! It is now safe to connect your app. [90m│[39m
+[90m│[39m i  View Emulator UI at http://127.0.0.1:4000/               [90m│[39m
+[90m└─────────────────────────────────────────────────────────────┘[39m
+
+[90m┌───────────[39m[90m┬────────────────[39m[90m┬─────────────────────────────────┐[39m
+[90m│[39m[33m Emulator  [39m[90m│[39m[33m Host:Port      [39m[90m│[39m[33m View in Emulator UI             [39m[90m│[39m
+[90m├───────────[39m[90m┼────────────────[39m[90m┼─────────────────────────────────┤[39m
+[90m│[39m Functions [90m│[39m 127.0.0.1:5001 [90m│[39m http://127.0.0.1:4000/functions [90m│[39m
+[90m└───────────[39m[90m┴────────────────[39m[90m┴─────────────────────────────────┘[39m
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+⚠  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory.
+⚠  functions: Please note that there will be breaking changes when you upgrade.
+✔  functions: Using node@20 from host.
+Serving at port 8145
+
+✔  functions: Loaded functions definitions from source: getSheetData, updateClientTherapist, updateClientStatus, updateUserRole, createUserProfile.
+⚠  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory.
+⚠  functions: Please note that there will be breaking changes when you upgrade.
+✔  functions: Using node@20 from host.
+Serving at port 8779
+
+⚠  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory.
+⚠  functions: Please note that there will be breaking changes when you upgrade.
+✔  functions: Using node@20 from host.
+Serving at port 8521
+
+✔  functions: Loaded functions definitions from source: getSheetData, updateClientTherapist, updateClientStatus, updateUserRole, createUserProfile.
+⚠  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory.
+⚠  functions: Please note that there will be breaking changes when you upgrade.
+✔  functions: Using node@20 from host.
+✔  functions: Loaded functions definitions from source: getSheetData, updateClientTherapist, updateClientStatus, updateUserRole, createUserProfile.
+Serving at port 8741
+
+✔  functions: Loaded functions definitions from source: getSheetData, updateClientTherapist, updateClientStatus, updateUserRole, createUserProfile.
+⚠  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory.
+⚠  functions: Please note that there will be breaking changes when you upgrade.
+✔  functions: Using node@20 from host.
+Serving at port 8030
+
+✔  functions: Loaded functions definitions from source: getSheetData, updateClientTherapist, updateClientStatus, updateUserRole, createUserProfile.
+⚠  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory.
+⚠  functions: Please note that there will be breaking changes when you upgrade.
+✔  functions: Using node@20 from host.
+Serving at port 8095
+
+✔  functions: Loaded functions definitions from source: getSheetData, updateClientTherapist, updateClientStatus, updateUserRole, createUserProfile.
+ 
+i  emulators: Received SIGTERM for the first time. Starting a clean shutdown.
+i  emulators: Please wait for a clean shutdown or send the SIGTERM signal again to stop right now.
+i  emulators: Shutting down emulators.
+i  ui: Stopping Emulator UI
+i  functions: Stopping Functions Emulator
+i  eventarc: Stopping Eventarc Emulator
+i  tasks: Stopping Cloud Tasks Emulator
+i  hub: Stopping emulator hub
+i  logging: Stopping Logging Emulator

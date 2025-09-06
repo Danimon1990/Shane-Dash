@@ -35,14 +35,30 @@ const ProtectedRoute = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // If user is a therapist (billing user), restrict access to only allowed paths
-  if (currentUser?.role === ROLES.THERAPIST) {
-    const allowedPaths = getNavigationForRole(ROLES.THERAPIST).map(item => item.path);
+  // Route restrictions based on role
+  if (currentUser?.role) {
+    const allowedPaths = getNavigationForRole(currentUser.role).map(item => item.path);
     allowedPaths.push('/'); // Allow home page
     
+    // Apply role-specific restrictions
     if (!allowedPaths.includes(location.pathname)) {
-      console.log('🚫 ProtectedRoute: Billing user accessing restricted path, redirecting to billing');
-      return <Navigate to="/billing" replace />;
+      console.log(`🚫 ProtectedRoute: ${currentUser.role} user accessing restricted path, redirecting`);
+      
+      // Redirect to appropriate default page based on role
+      switch (currentUser.role) {
+        case ROLES.ADMIN:
+          return <Navigate to="/clients" replace />;
+        case ROLES.BILLING:
+          return <Navigate to="/billing" replace />;
+        case ROLES.THERAPIST:
+          return <Navigate to="/my-clients" replace />;
+        case ROLES.ASSOCIATE:
+          return <Navigate to="/associates" replace />;
+        case ROLES.VIEWER:
+          return <Navigate to="/associates" replace />;
+        default:
+          return <Navigate to="/associates" replace />;
+      }
     }
   }
 

@@ -16,6 +16,8 @@ import ClinicalForms from './pages/ClinicalForms';
 import AdminPanel from './pages/AdminPanel';
 import AISummary from './pages/AISummary';
 import Home from './pages/Home';
+import MyClients from './pages/MyClients';
+import TherapyNotes from './pages/TherapyNotes';
 import './App.css';
 
 // Separate layout for authenticated pages
@@ -126,6 +128,20 @@ function App() {
               <ProtectedRoute>
                 <AuthenticatedLayout>
                   <AdminPanel />
+                </AuthenticatedLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/my-clients" element={
+              <ProtectedRoute>
+                <AuthenticatedLayout>
+                  <MyClients />
+                </AuthenticatedLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/therapy-notes" element={
+              <ProtectedRoute>
+                <AuthenticatedLayout>
+                  <TherapyNotes />
                 </AuthenticatedLayout>
               </ProtectedRoute>
             } />

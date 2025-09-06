@@ -1,6 +1,7 @@
 // Role-based access control configuration
 const ROLES = {
   ADMIN: 'admin',
+  BILLING: 'billing',
   THERAPIST: 'therapist',
   ASSOCIATE: 'associate',
   VIEWER: 'viewer'
@@ -54,21 +55,16 @@ const ROLE_PERMISSIONS = {
     ...Object.values(PERMISSIONS)
   ],
   
-  [ROLES.THERAPIST]: [
-    // Client management
+  [ROLES.BILLING]: [
+    // Full billing and client access (like admin)
     PERMISSIONS.VIEW_CLIENTS,
     PERMISSIONS.EDIT_CLIENTS,
     PERMISSIONS.ASSIGN_THERAPISTS,
     
-    // Therapy notes (for assigned clients only)
-    PERMISSIONS.VIEW_NOTES,
-    PERMISSIONS.CREATE_NOTES,
-    PERMISSIONS.EDIT_NOTES,
-    PERMISSIONS.DELETE_NOTES,
-    
-    // Billing (therapist role is used for billing users)
+    // Full billing access
     PERMISSIONS.VIEW_BILLING,
     PERMISSIONS.EDIT_BILLING,
+    PERMISSIONS.PROCESS_PAYMENTS,
     
     // Calendar
     PERMISSIONS.VIEW_CALENDAR,
@@ -77,7 +73,33 @@ const ROLE_PERMISSIONS = {
     // Documents
     PERMISSIONS.VIEW_DOCUMENTS,
     PERMISSIONS.UPLOAD_DOCUMENTS,
-    PERMISSIONS.DELETE_DOCUMENTS
+    PERMISSIONS.DELETE_DOCUMENTS,
+    
+    // Export data for reports
+    PERMISSIONS.EXPORT_DATA
+  ],
+  
+  [ROLES.THERAPIST]: [
+    // Limited client access (only assigned clients)
+    PERMISSIONS.VIEW_CLIENTS,
+    PERMISSIONS.EDIT_CLIENTS,
+    
+    // Full therapy notes access (for assigned clients)
+    PERMISSIONS.VIEW_NOTES,
+    PERMISSIONS.CREATE_NOTES,
+    PERMISSIONS.EDIT_NOTES,
+    PERMISSIONS.DELETE_NOTES,
+    
+    // Limited billing view (no editing)
+    PERMISSIONS.VIEW_BILLING,
+    
+    // Calendar
+    PERMISSIONS.VIEW_CALENDAR,
+    PERMISSIONS.MANAGE_APPOINTMENTS,
+    
+    // Documents (for assigned clients)
+    PERMISSIONS.VIEW_DOCUMENTS,
+    PERMISSIONS.UPLOAD_DOCUMENTS
   ],
   
   [ROLES.ASSOCIATE]: [
@@ -196,10 +218,10 @@ class RoleBasedAccessControl {
         return this.userRole !== ROLES.VIEWER;
       
       case DATA_ACCESS_LEVELS.CONFIDENTIAL:
-        return [ROLES.ADMIN, ROLES.THERAPIST, ROLES.ASSOCIATE].includes(this.userRole);
+        return [ROLES.ADMIN, ROLES.BILLING, ROLES.THERAPIST, ROLES.ASSOCIATE].includes(this.userRole);
       
       case DATA_ACCESS_LEVELS.RESTRICTED:
-        return [ROLES.ADMIN, ROLES.THERAPIST].includes(this.userRole);
+        return [ROLES.ADMIN, ROLES.BILLING, ROLES.THERAPIST].includes(this.userRole);
       
       default:
         return false;
@@ -216,6 +238,9 @@ class RoleBasedAccessControl {
     switch (this.userRole) {
       case ROLES.ADMIN:
         return data; // Full access
+        
+      case ROLES.BILLING:
+        return data; // Full access like admin
         
       case ROLES.THERAPIST:
         return this.filterForTherapist(data, dataType);
@@ -322,6 +347,16 @@ class RoleBasedAccessControl {
   // Check if user is viewer
   isViewer() {
     return this.userRole === ROLES.VIEWER;
+  }
+
+  // Check if user is billing
+  isBilling() {
+    return this.userRole === ROLES.BILLING;
+  }
+
+  // Check if user has admin-level access
+  hasAdminAccess() {
+    return this.userRole === ROLES.ADMIN || this.userRole === ROLES.BILLING;
   }
 
   // Get all available roles

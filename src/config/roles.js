@@ -1,7 +1,8 @@
 // Role configuration for the application
 export const ROLES = {
   ADMIN: 'admin',
-  THERAPIST: 'therapist', // Used for billing users currently
+  BILLING: 'billing', // Dedicated billing role
+  THERAPIST: 'therapist', // Actual therapists role
   ASSOCIATE: 'associate',
   VIEWER: 'viewer'
 };
@@ -22,9 +23,13 @@ export const ROLE_NAVIGATION = {
     { id: 'calendar', label: 'Calendar', path: '/calendar' },
     { id: 'forms', label: 'Clinical Forms', path: '/forms' }
   ],
-  [ROLES.THERAPIST]: [
+  [ROLES.BILLING]: [
     { id: 'billing', label: 'Billing', path: '/billing' },
     { id: 'associates', label: 'Associates', path: '/associates' },
+    { id: 'calendar', label: 'Calendar', path: '/calendar' }
+  ],
+  [ROLES.THERAPIST]: [
+    { id: 'my-clients', label: 'My Clients', path: '/my-clients' },
     { id: 'calendar', label: 'Calendar', path: '/calendar' }
   ],
   [ROLES.ASSOCIATE]: [
@@ -40,7 +45,8 @@ export const ROLE_NAVIGATION = {
 // Role display names (what users see)
 export const ROLE_DISPLAY_NAMES = {
   [ROLES.ADMIN]: 'Administrator',
-  [ROLES.THERAPIST]: 'Billing', // Show as "Billing" instead of "Therapist"
+  [ROLES.BILLING]: 'Billing Specialist',
+  [ROLES.THERAPIST]: 'Therapist',
   [ROLES.ASSOCIATE]: 'Associate',
   [ROLES.VIEWER]: 'Viewer'
 };
@@ -55,12 +61,17 @@ export const getRoleDisplayName = (role) => {
   return ROLE_DISPLAY_NAMES[role] || 'Unknown';
 };
 
-// Helper function to check if user is billing (currently using therapist role)
+// Helper function to check if user is billing
 export const isBillingUser = (user) => {
-  return user?.role === ROLES.THERAPIST && user?.userType === USER_TYPES.BILLING;
+  return user?.role === ROLES.BILLING;
 };
 
-// Helper function to check if user is actual therapist (for future use)
+// Helper function to check if user is therapist
 export const isTherapistUser = (user) => {
-  return user?.role === ROLES.THERAPIST && user?.userType === USER_TYPES.THERAPIST;
+  return user?.role === ROLES.THERAPIST;
+};
+
+// Helper function to check if user has admin-level access (admin or billing)
+export const hasAdminAccess = (user) => {
+  return user?.role === ROLES.ADMIN || user?.role === ROLES.BILLING;
 }; 

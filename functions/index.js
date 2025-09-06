@@ -121,6 +121,34 @@ const withAuth = (handler, requiredRoles = []) => {
   };
 };
 
+// Robust name matching utility
+const normalizeTherapistName = (name) => {
+  if (!name) return '';
+  return name.toLowerCase().trim().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
+};
+
+const isTherapistMatch = (therapistNameFromSheet, currentUserName, currentUserDisplayName) => {
+  if (!therapistNameFromSheet) return false;
+  
+  // Simple exact matching only - no partial matches to avoid false positives
+  const normalizedSheetName = normalizeTherapistName(therapistNameFromSheet);
+  const normalizedUserName = normalizeTherapistName(currentUserName);
+  const normalizedDisplayName = normalizeTherapistName(currentUserDisplayName);
+  
+  console.log(`🔍 Matching: Sheet="${therapistNameFromSheet}" -> "${normalizedSheetName}" | User="${currentUserName}" -> "${normalizedUserName}" | Display="${currentUserDisplayName}" -> "${normalizedDisplayName}"`);
+  
+  // Only exact matches
+  const isMatch = normalizedSheetName === normalizedUserName || normalizedSheetName === normalizedDisplayName;
+  
+  if (isMatch) {
+    console.log(`✅ EXACT MATCH FOUND`);
+  } else {
+    console.log(`❌ No match`);
+  }
+  
+  return isMatch;
+};
+
 // Get sheet data function
 const getSheetDataHandler = async (req, res) => {
   console.log('getSheetData function called with method:', req.method);
@@ -260,8 +288,55 @@ const getSheetDataHandler = async (req, res) => {
         }
       }));
 
-      // Apply role-based data filtering
-      const filteredClients = formattedClients.map(client => {
+      // Get user data for therapist filtering
+      let userData = null;
+      if (req.userRole === 'therapist') {
+        try {
+          const userDoc = await admin.firestore().collection('users').doc(req.user.uid).get();
+          if (userDoc.exists) {
+            userData = userDoc.data();
+          }
+        } catch (error) {
+          console.error('Error fetching user data for therapist filtering:', error);
+        }
+      }
+
+      // Apply role-based data and client filtering
+      let clientsToProcess = formattedClients;
+      
+      // For therapists, only show clients assigned to them
+      if (req.userRole === 'therapist' && userData) {
+        const userName = userData.name || '';
+        const userDisplayName = userData.displayName || '';
+        
+        console.log('🧑‍⚕️ THERAPIST FILTERING - User:', userName, '| Display Name:', userDisplayName);
+        console.log('📊 Total clients before filtering:', formattedClients.length);
+        
+        clientsToProcess = formattedClients.filter((client, index) => {
+          const therapistName = client.therapist?.name || '';
+          const isMatch = isTherapistMatch(therapistName, userName, userDisplayName);
+          
+          // Log first 5 clients for debugging
+          if (index < 5) {
+            console.log(`Client ${index + 1}: "${client.name}" -> Therapist: "${therapistName}" -> Match: ${isMatch}`);
+          }
+          
+          return isMatch;
+        });
+        
+        console.log(`🔽 FINAL RESULT: Filtered ${formattedClients.length} clients down to ${clientsToProcess.length} for therapist "${userName}"`);
+        
+        // If we're still seeing too many clients, log all matches
+        if (clientsToProcess.length > 10) {
+          console.log('🚨 WARNING: Too many clients matched! Listing all matches:');
+          clientsToProcess.forEach((client, index) => {
+            console.log(`${index + 1}. "${client.name}" -> Therapist: "${client.therapist?.name}"`);
+          });
+        }
+      }
+
+      // Apply data sensitivity filtering based on user role
+      const filteredClients = clientsToProcess.map(client => {
         // Filter sensitive data based on user role
         if (req.userRole === 'associate') {
           // Associates can't see medical or detailed billing info
@@ -286,7 +361,7 @@ const getSheetDataHandler = async (req, res) => {
             }
           };
         }
-        // Admin gets full access
+        // Admin and billing get full access
         return client;
       });
 
@@ -553,21 +628,21 @@ exports.getSheetData = onRequest({
   maxInstances: 10,
   timeoutSeconds: 60,
   memory: '256MiB'
-}, withAuth(getSheetDataHandler, ['admin', 'therapist', 'associate']));
+}, withAuth(getSheetDataHandler, ['admin', 'billing', 'therapist', 'associate']));
 
 exports.updateClientTherapist = onRequest({
   region: 'us-central1',
   maxInstances: 10,
   timeoutSeconds: 60,
   memory: '256MiB'
-}, withAuth(updateClientTherapistHandler, ['admin', 'therapist']));
+}, withAuth(updateClientTherapistHandler, ['admin', 'billing']));
 
 exports.updateClientStatus = onRequest({
   region: 'us-central1',
   maxInstances: 10,
   timeoutSeconds: 60,
   memory: '256MiB'
-}, withAuth(updateClientStatusHandler, ['admin', 'therapist']));
+}, withAuth(updateClientStatusHandler, ['admin', 'billing']));
 
 exports.updateUserRole = onRequest({
   region: 'us-central1',
