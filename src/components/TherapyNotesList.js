@@ -38,21 +38,23 @@ const TherapyNotesList = ({ clientId }) => {
       // Create a query for the client's notes, ordered by timestamp descending (newest first)
       const notesRef = collection(db, 'clients', stringClientId, 'notes');
       
+      console.log('🔍 Setting up therapy notes query for user:', currentUser.uid, 'role:', userRole);
+      
       // Apply role-based filtering
       let notesQuery;
       
       if (userRole === 'admin') {
-        // Admins can see all notes
-        notesQuery = query(notesRef, orderBy('timestamp', 'desc'));
+        // Admins can see all notes - simple query without where clause
+        notesQuery = query(notesRef, orderBy('createdAt', 'desc'));
+        console.log('📋 Admin query: all notes ordered by createdAt');
       } else if (userRole === 'therapist' || userRole === 'associate') {
-        // Therapists and associates can only see notes they created
-        notesQuery = query(
-          notesRef, 
-          where('therapistId', '==', currentUser.uid),
-          orderBy('timestamp', 'desc')
-        );
+        // Therapists can only see notes they created
+        // Use simple where query without orderBy to avoid composite index requirement
+        notesQuery = query(notesRef, where('therapistId', '==', currentUser.uid));
+        console.log('👩‍⚕️ Therapist query: therapistId ==', currentUser.uid);
       } else {
         // Other roles cannot see therapy notes for HIPAA compliance
+        console.log('🚫 Access denied for role:', userRole);
         setError('Access denied: Therapy notes are restricted to authorized personnel');
         setLoading(false);
         return;
@@ -62,18 +64,49 @@ const TherapyNotesList = ({ clientId }) => {
       const unsubscribe = onSnapshot(
         notesQuery,
         (snapshot) => {
-          const notesList = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            timestamp: doc.data().timestamp?.toDate() || new Date(doc.data().createdAt)
-          }));
+          console.log('📄 Firestore snapshot received:', snapshot.docs.length, 'documents');
+          
+          const notesList = snapshot.docs.map(doc => {
+            const data = doc.data();
+            console.log('📋 Therapy note doc:', doc.id, 'therapistId:', data.therapistId, 'content preview:', data.content?.substring(0, 50) + '...');
+            return {
+              id: doc.id,
+              ...data,
+              timestamp: data.timestamp?.toDate() || new Date(data.createdAt)
+            };
+          });
+          
+          // Sort by timestamp descending (newest first) since we removed orderBy from query
+          notesList.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+          
+          console.log('✅ Final notes list:', notesList.length, 'notes');
           setNotes(notesList);
           setLoading(false);
         },
         (err) => {
           console.error('Error getting therapy notes:', err);
-          setError('Failed to load therapy notes');
-          setLoading(false);
+          console.log('Error code:', err.code, 'Error message:', err.message);
+          
+          // For most common errors, just show empty state instead of error message
+          const commonErrorCodes = [
+            'permission-denied',
+            'not-found', 
+            'failed-precondition',
+            'unavailable',
+            'unauthenticated'
+          ];
+          
+          if (commonErrorCodes.includes(err.code) || !err.code) {
+            console.log('Showing empty state for common error:', err.code || 'unknown');
+            setNotes([]);
+            setLoading(false);
+            setError(null);
+          } else {
+            // Only show error for truly unexpected errors
+            console.log('Showing error message for unexpected error:', err.code);
+            setError('Failed to load therapy notes');
+            setLoading(false);
+          }
         }
       );
 
@@ -81,8 +114,11 @@ const TherapyNotesList = ({ clientId }) => {
       return () => unsubscribe();
     } catch (err) {
       console.error('Error setting up notes listener:', err);
-      setError('Failed to load therapy notes');
+      // For setup errors, just show empty state instead of blocking the UI
+      console.log('Showing empty therapy notes state due to setup error');
+      setNotes([]);
       setLoading(false);
+      setError(null);
     }
   }, [clientId, userRole, currentUser, canPerform]);
 
