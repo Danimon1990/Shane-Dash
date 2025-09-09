@@ -8,8 +8,8 @@ const AdminPanel = () => {
     // Sample data - will be replaced with Google Workspace data
     {
       id: 1,
-      name: 'John Doe',
-      email: 'john.doe@example.com',
+      name: 'Shane Bruce',
+      email: 'Shane@ShaneBruceOffice.com',
       role: 'admin',
       status: 'Active',
       lastLogin: '2023-01-15 10:30 AM'
