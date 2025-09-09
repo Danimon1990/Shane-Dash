@@ -79,6 +79,15 @@ const Associates = () => {
   // Check if user is an actual therapist (name matches therapist list) or a billing user
   const isActualTherapist = userTherapistName !== null;
   const isBillingUser = isTherapist && !isActualTherapist; // Has therapist role but not in therapist list
+  
+  console.log('🔍 Therapist Logic Debug:', {
+    currentUserName: currentUser?.name,
+    userRole: currentUser?.role,
+    userTherapistName,
+    isActualTherapist,
+    isBillingUser,
+    therapistList
+  });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -114,7 +123,8 @@ const Associates = () => {
             clients: []
           });
         });
-        if (isAdmin || isBillingUser) {
+        // Only admin and billing users (not actual therapists) see unassigned clients
+        if (isAdmin || (isBillingUser && !isActualTherapist)) {
           therapistMap.set('Unassigned', {
             id: 'Unassigned',
             name: 'Unassigned',
@@ -136,10 +146,14 @@ const Associates = () => {
         
         const therapists = Array.from(therapistMap.values())
             .filter(t => {
-              // Admin and billing users see all therapists
-              if (isAdmin || isBillingUser) return true;
+              // Admin users see all therapists
+              if (isAdmin) return true;
+              // Billing users (therapist role but not in therapist list) see all therapists
+              if (isBillingUser && !isActualTherapist) return true;
               // Actual therapists only see their own clients
-              return t.name === userTherapistName;
+              if (isActualTherapist) return t.name === userTherapistName;
+              // Default: no access
+              return false;
             })
             .sort((a, b) => {
               if (a.name === 'Unassigned') return 1;

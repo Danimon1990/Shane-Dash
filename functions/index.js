@@ -127,18 +127,17 @@ const normalizeTherapistName = (name) => {
   return name.toLowerCase().trim().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
 };
 
-const isTherapistMatch = (therapistNameFromSheet, currentUserName, currentUserDisplayName) => {
-  if (!therapistNameFromSheet) return false;
+const isTherapistMatch = (therapistNameFromSheet, currentUserName) => {
+  if (!therapistNameFromSheet || !currentUserName) return false;
   
   // Simple exact matching only - no partial matches to avoid false positives
   const normalizedSheetName = normalizeTherapistName(therapistNameFromSheet);
   const normalizedUserName = normalizeTherapistName(currentUserName);
-  const normalizedDisplayName = normalizeTherapistName(currentUserDisplayName);
   
-  console.log(`🔍 Matching: Sheet="${therapistNameFromSheet}" -> "${normalizedSheetName}" | User="${currentUserName}" -> "${normalizedUserName}" | Display="${currentUserDisplayName}" -> "${normalizedDisplayName}"`);
+  console.log(`🔍 Matching: Sheet="${therapistNameFromSheet}" -> "${normalizedSheetName}" | User="${currentUserName}" -> "${normalizedUserName}"`);
   
-  // Only exact matches
-  const isMatch = normalizedSheetName === normalizedUserName || normalizedSheetName === normalizedDisplayName;
+  // Only exact match on the 'name' field
+  const isMatch = normalizedSheetName === normalizedUserName;
   
   if (isMatch) {
     console.log(`✅ EXACT MATCH FOUND`);
@@ -292,12 +291,16 @@ const getSheetDataHandler = async (req, res) => {
       let userData = null;
       if (req.userRole === 'therapist') {
         try {
+          console.log('🔍 Fetching user data for therapist UID:', req.user.uid);
           const userDoc = await admin.firestore().collection('users').doc(req.user.uid).get();
           if (userDoc.exists) {
             userData = userDoc.data();
+            console.log('✅ User data found:', JSON.stringify(userData, null, 2));
+          } else {
+            console.log('❌ No user document found in Firestore for UID:', req.user.uid);
           }
         } catch (error) {
-          console.error('Error fetching user data for therapist filtering:', error);
+          console.error('❌ Error fetching user data for therapist filtering:', error);
         }
       }
 
@@ -305,32 +308,61 @@ const getSheetDataHandler = async (req, res) => {
       let clientsToProcess = formattedClients;
       
       // For therapists, only show clients assigned to them
-      if (req.userRole === 'therapist' && userData) {
-        const userName = userData.name || '';
-        const userDisplayName = userData.displayName || '';
+      if (req.userRole === 'therapist') {
+        console.log('🧑‍⚕️ THERAPIST ROLE DETECTED - Starting filtering process');
         
-        console.log('🧑‍⚕️ THERAPIST FILTERING - User:', userName, '| Display Name:', userDisplayName);
-        console.log('📊 Total clients before filtering:', formattedClients.length);
-        
-        clientsToProcess = formattedClients.filter((client, index) => {
-          const therapistName = client.therapist?.name || '';
-          const isMatch = isTherapistMatch(therapistName, userName, userDisplayName);
+        if (!userData) {
+          console.log('🚨 CRITICAL: No userData found for therapist - DENYING ALL ACCESS');
+          clientsToProcess = [];
+        } else if (!userData.name) {
+          console.log('🚨 CRITICAL: No name field in userData for therapist - DENYING ALL ACCESS');
+          console.log('Available userData fields:', Object.keys(userData));
+          clientsToProcess = [];
+        } else {
+          const userName = userData.name.trim();
           
-          // Log first 5 clients for debugging
-          if (index < 5) {
-            console.log(`Client ${index + 1}: "${client.name}" -> Therapist: "${therapistName}" -> Match: ${isMatch}`);
-          }
+          console.log('🧑‍⚕️ STARTING THERAPIST FILTERING');
+          console.log(`   Therapist name from Firebase: "${userName}"`);
+          console.log(`   Total clients before filtering: ${formattedClients.length}`);
           
-          return isMatch;
-        });
+          // Count how many clients have each therapist name for debugging
+          const therapistCounts = {};
+          formattedClients.forEach(client => {
+            const therapistName = client.therapist?.name || 'No Therapist';
+            therapistCounts[therapistName] = (therapistCounts[therapistName] || 0) + 1;
+          });
+          console.log('📊 Therapist distribution in sheet:', JSON.stringify(therapistCounts, null, 2));
+          
+          clientsToProcess = formattedClients.filter((client, index) => {
+            const therapistName = client.therapist?.name || '';
+            const isMatch = isTherapistMatch(therapistName, userName);
+            
+            // Log first 10 clients for debugging
+            if (index < 10) {
+              console.log(`   Client ${index + 1}: "${client.name}" -> Sheet Therapist: "${therapistName}" -> Match: ${isMatch}`);
+            }
+            
+            return isMatch;
+          });
+        }
         
-        console.log(`🔽 FINAL RESULT: Filtered ${formattedClients.length} clients down to ${clientsToProcess.length} for therapist "${userName}"`);
+        const displayUserName = userData?.name || 'Unknown';
+        console.log(`🔽 FINAL FILTERING RESULT:`);
+        console.log(`   Therapist: "${displayUserName}"`);
+        console.log(`   Before: ${formattedClients.length} clients`);
+        console.log(`   After: ${clientsToProcess.length} clients`);
         
-        // If we're still seeing too many clients, log all matches
-        if (clientsToProcess.length > 10) {
-          console.log('🚨 WARNING: Too many clients matched! Listing all matches:');
-          clientsToProcess.forEach((client, index) => {
-            console.log(`${index + 1}. "${client.name}" -> Therapist: "${client.therapist?.name}"`);
+        // If no clients matched, this is expected for non-matching therapists
+        if (clientsToProcess.length === 0) {
+          console.log('✅ NO CLIENTS MATCHED - This is correct if therapist name is not in sheet');
+        }
+        
+        // If too many clients matched, something is wrong
+        if (clientsToProcess.length > 15) {
+          console.log('🚨 WARNING: Too many clients matched! This suggests filtering failed');
+          console.log('First 10 matches:');
+          clientsToProcess.slice(0, 10).forEach((client, index) => {
+            console.log(`   ${index + 1}. "${client.name}" -> Therapist: "${client.therapist?.name}"`);
           });
         }
       }

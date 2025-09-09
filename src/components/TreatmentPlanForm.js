@@ -4,19 +4,19 @@ import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { useSecureData } from '../hooks/useSecureData';
 
-const TherapyNoteForm = ({ clientId, clientName, onClose, onSaved, clientData }) => {
+const TreatmentPlanForm = ({ clientId, clientName, onClose, onSaved, clientData, existingPlan = null }) => {
   const { currentUser } = useAuth();
   const { canPerform, userRole } = useSecureData();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const [note, setNote] = useState({
-    content: ''
+  const [plan, setPlan] = useState({
+    content: existingPlan?.content || ''
   });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setNote(prevNote => ({
-      ...prevNote,
+    setPlan(prevPlan => ({
+      ...prevPlan,
       [name]: value
     }));
   };
@@ -24,9 +24,9 @@ const TherapyNoteForm = ({ clientId, clientName, onClose, onSaved, clientData })
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Check permissions before allowing note creation
+    // Check permissions before allowing plan creation/update
     if (!canPerform('create_notes')) {
-      setError('Insufficient permissions to create therapy notes');
+      setError('Insufficient permissions to create/update treatment plans');
       return;
     }
     
@@ -36,59 +36,48 @@ const TherapyNoteForm = ({ clientId, clientName, onClose, onSaved, clientData })
       const currentUserName = currentUser.name || currentUser.displayName;
       
       if (assignedTherapist !== currentUserName) {
-        setError('You can only create notes for clients assigned to you');
+        setError('You can only create/update treatment plans for clients assigned to you');
         return;
       }
     }
     
-    if (!note.content.trim()) {
-      setError('Note content is required');
+    if (!plan.content.trim()) {
+      setError('Treatment plan content is required');
       return;
     }
-    
-    // Debug logging
-    console.log('🔍 TherapyNoteForm - clientId type:', typeof clientId, 'value:', clientId);
-    console.log('🔍 TherapyNoteForm - clientName:', clientName);
-    console.log('🔍 TherapyNoteForm - userRole:', userRole);
-    console.log('🔍 TherapyNoteForm - assignedTherapist:', clientData?.therapist?.name);
-    console.log('🔍 TherapyNoteForm - currentUserName:', currentUser.name || currentUser.displayName);
     
     setIsSubmitting(true);
     setError(null);
     
     try {
-      // Extract names for better note identification
-      const nameParts = clientName.trim().split(' ');
-      const clientLastName = nameParts.pop() || '';
-      const clientFirstName = nameParts.join(' ') || '';
-      
-      // Create a unique ID: associateName_clientName_timestamp
+      // Create a unique ID: associateName_clientName_timestamp (or use existing ID for updates)
       const associateName = currentUser.name || currentUser.displayName || 'Unknown';
       const timestamp = new Date().getTime();
-      const noteId = `${associateName}_${clientFirstName}_${clientLastName}_${timestamp}`;
+      const planId = existingPlan?.id || `${associateName}_treatmentplan_${timestamp}`;
       
       // Ensure clientId is a string for Firestore
       const clientIdString = String(clientId);
-      console.log('🔍 TherapyNoteForm - clientIdString:', clientIdString);
       
-      // Create a reference to the notes subcollection for this client
-      const notesCollectionRef = collection(db, 'clients', clientIdString, 'notes');
+      // Create a reference to the treatmentPlans subcollection for this client
+      const plansCollectionRef = collection(db, 'clients', clientIdString, 'treatmentPlans');
       
       // Create a document with the unique ID
-      const noteRef = doc(notesCollectionRef, noteId);
+      const planRef = doc(plansCollectionRef, planId);
       
       // Set the document data
-      await setDoc(noteRef, {
-        ...note,
+      await setDoc(planRef, {
+        ...plan,
         clientId: clientIdString,
         therapistId: currentUser.uid,
         therapistName: currentUser.name,
         timestamp: serverTimestamp(),
-        createdAt: new Date().toISOString() // Fallback for client-side sorting
-      });
+        createdAt: existingPlan?.createdAt || new Date().toISOString(),
+        lastModified: new Date().toISOString(),
+        version: existingPlan ? (existingPlan.version || 1) + 1 : 1
+      }, { merge: true });
       
       // Clear form and notify parent component
-      setNote({
+      setPlan({
         content: ''
       });
       
@@ -98,8 +87,8 @@ const TherapyNoteForm = ({ clientId, clientName, onClose, onSaved, clientData })
         onSaved();
       }
     } catch (err) {
-      console.error('Error saving therapy note:', err);
-      setError('Failed to save note. Please try again.');
+      console.error('Error saving treatment plan:', err);
+      setError('Failed to save treatment plan. Please try again.');
       setIsSubmitting(false);
     }
   };
@@ -107,7 +96,9 @@ const TherapyNoteForm = ({ clientId, clientName, onClose, onSaved, clientData })
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">New Therapy Note for {clientName}</h2>
+        <h2 className="text-xl font-semibold">
+          {existingPlan ? 'Update Treatment Plan' : 'New Treatment Plan'} for {clientName}
+        </h2>
         <button 
           onClick={onClose}
           className="text-gray-500 hover:text-gray-700"
@@ -126,15 +117,15 @@ const TherapyNoteForm = ({ clientId, clientName, onClose, onSaved, clientData })
       
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
-          <label className="block text-gray-700 font-medium mb-2">Therapy Note</label>
+          <label className="block text-gray-700 font-medium mb-2">Treatment Plan</label>
           <textarea
             name="content"
-            placeholder="Write your therapy note here... You can include session details, observations, assessments, plans, or any other relevant information in your own style."
-            value={note.content}
+            placeholder="Write the treatment plan here... Include goals, interventions, timeline, expected outcomes, and any other relevant planning information."
+            value={plan.content}
             onChange={handleChange}
-            rows={12}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-vertical"
-          ></textarea>
+            rows={15}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 resize-vertical"
+          />
         </div>
         
         <div className="flex justify-end mt-6 space-x-3">
@@ -148,10 +139,10 @@ const TherapyNoteForm = ({ clientId, clientName, onClose, onSaved, clientData })
           </button>
           <button
             type="submit"
-            className="px-4 py-2 text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="px-4 py-2 text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Saving...' : 'Save Note'}
+            {isSubmitting ? 'Saving...' : (existingPlan ? 'Update Plan' : 'Save Plan')}
           </button>
         </div>
       </form>
@@ -159,4 +150,4 @@ const TherapyNoteForm = ({ clientId, clientName, onClose, onSaved, clientData })
   );
 };
 
-export default TherapyNoteForm; 
+export default TreatmentPlanForm;

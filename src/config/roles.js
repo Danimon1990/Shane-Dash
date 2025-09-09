@@ -17,7 +17,7 @@ export const USER_TYPES = {
 // Navigation configuration for each role
 export const ROLE_NAVIGATION = {
   [ROLES.ADMIN]: [
-    { id: 'clients', label: 'Clients', path: '/clients' },
+    { id: 'my-clients', label: 'My Clients', path: '/my-clients' },
     { id: 'associates', label: 'Associates', path: '/associates' },
     { id: 'admin', label: 'Admin', path: '/admin' },
     { id: 'calendar', label: 'Calendar', path: '/calendar' },
@@ -25,6 +25,7 @@ export const ROLE_NAVIGATION = {
   ],
   [ROLES.BILLING]: [
     { id: 'billing', label: 'Billing', path: '/billing' },
+    { id: 'my-clients', label: 'My Clients', path: '/my-clients' },
     { id: 'associates', label: 'Associates', path: '/associates' },
     { id: 'calendar', label: 'Calendar', path: '/calendar' }
   ],

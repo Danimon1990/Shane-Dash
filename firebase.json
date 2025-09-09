@@ -28,5 +28,23 @@
     "source": "functions",
     "runtime": "nodejs20",
     "codebase": "default"
+  },
+  "emulators": {
+    "apphosting": {
+      "port": 3001,
+      "rootDirectory": "./",
+      "startCommand": "npm run dev"
+    },
+    "functions": {
+      "port": 5001
+    },
+    "hosting": {
+      "port": 5000
+    },
+    "ui": {
+      "enabled": true,
+      "port": 3001
+    },
+    "singleProjectMode": true
   }
 }

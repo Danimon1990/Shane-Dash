@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSecureData } from '../hooks/useSecureData';
 import TherapyNoteForm from '../components/TherapyNoteForm';
 import TherapyNotesList from '../components/TherapyNotesList';
+import TreatmentPlanList from '../components/TreatmentPlanList';
 
 const MyClients = () => {
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ const MyClients = () => {
   const [selectedClient, setSelectedClient] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('data');
+  const [activeNotesTab, setActiveNotesTab] = useState('progress'); // 'progress' or 'treatment'
   const [showActiveOnly, setShowActiveOnly] = useState(true);
   const [notification, setNotification] = useState(null);
   const [showNoteForm, setShowNoteForm] = useState(false);
@@ -527,91 +529,177 @@ const MyClients = () => {
 
                   {activeTab === 'notes' && (
                     <section>
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-medium">Therapy Notes</h3>
-                        {canPerform('create_notes') && (
+                      <h3 className="text-lg font-medium mb-4">Therapy Notes</h3>
+                      
+                      {/* Sub-tabs for Notes */}
+                      <div className="border-b border-gray-200 mb-6">
+                        <nav className="-mb-px flex space-x-8">
                           <button
-                            onClick={() => setShowNoteForm(!showNoteForm)}
-                            className={`px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                              showNoteForm 
-                                ? 'bg-gray-500 text-white hover:bg-gray-600' 
-                                : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                            }`}
+                            onClick={() => setActiveNotesTab('progress')}
+                            className={`${
+                              activeNotesTab === 'progress'
+                                ? 'border-indigo-500 text-indigo-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm`}
                           >
-                            {showNoteForm ? 'Cancel' : 'New Note'}
+                            Progress Notes
                           </button>
-                        )}
+                          <button
+                            onClick={() => setActiveNotesTab('treatment')}
+                            className={`${
+                              activeNotesTab === 'treatment'
+                                ? 'border-green-500 text-green-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm`}
+                          >
+                            Treatment Plan
+                          </button>
+                        </nav>
                       </div>
 
-                      {/* New Note Form */}
-                      {showNoteForm && canPerform('create_notes') && (
-                        <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
-                          <h4 className="text-md font-medium mb-4">Create New Therapy Note</h4>
-                          <TherapyNoteForm
-                            clientId={selectedClient.id}
-                            clientName={`${selectedClient.data.firstName} ${selectedClient.data.lastName}`}
-                            clientData={selectedClient}
-                            onClose={() => setShowNoteForm(false)}
-                            onSaved={() => {
-                              setShowNoteForm(false);
-                              setNotesRefresh(prev => prev + 1);
-                              showNotification('Therapy note saved successfully');
-                            }}
-                          />
+                      {/* Progress Notes Tab Content */}
+                      {activeNotesTab === 'progress' && (
+                        <div>
+                          <div className="flex justify-between items-center mb-4">
+                            <h4 className="text-md font-medium">Progress Notes</h4>
+                            {canPerform('create_notes') && (
+                              <button
+                                onClick={() => setShowNoteForm(!showNoteForm)}
+                                className={`px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                                  showNoteForm 
+                                    ? 'bg-gray-500 text-white hover:bg-gray-600' 
+                                    : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                }`}
+                              >
+                                {showNoteForm ? 'Cancel' : 'New Progress Note'}
+                              </button>
+                            )}
+                          </div>
+
+                          {/* New Note Form */}
+                          {showNoteForm && canPerform('create_notes') && (
+                            <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
+                              <h4 className="text-md font-medium mb-4">Create New Progress Note</h4>
+                              <TherapyNoteForm
+                                clientId={selectedClient.id}
+                                clientName={`${selectedClient.data.firstName} ${selectedClient.data.lastName}`}
+                                clientData={selectedClient}
+                                onClose={() => setShowNoteForm(false)}
+                                onSaved={() => {
+                                  setShowNoteForm(false);
+                                  setNotesRefresh(prev => prev + 1);
+                                  showNotification('Progress note saved successfully');
+                                }}
+                              />
+                            </div>
+                          )}
+
+                          {/* Client Summary */}
+                          <div className="mb-6 p-4 bg-blue-50 rounded-lg border-l-4 border-blue-400">
+                            <h4 className="text-sm font-semibold text-blue-800 mb-2">Client Summary</h4>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <span className="text-blue-600 font-medium">Primary Concern:</span>
+                                <div className="text-gray-800">{selectedClient.concerns?.primaryConcern || 'Not specified'}</div>
+                              </div>
+                              <div>
+                                <span className="text-blue-600 font-medium">Date of Birth:</span>
+                                <div className="text-gray-800">{selectedClient.data.birthDate}</div>
+                              </div>
+                              <div>
+                                <span className="text-blue-600 font-medium">Phone:</span>
+                                <div className="text-gray-800">{selectedClient.data.phone}</div>
+                              </div>
+                              <div>
+                                <span className="text-blue-600 font-medium">Emergency Contact:</span>
+                                <div className="text-gray-800">{selectedClient.data.emergencyContact?.name || 'Not provided'}</div>
+                              </div>
+                            </div>
+                            {selectedClient.concerns?.primaryDescription && (
+                              <div className="mt-3">
+                                <span className="text-blue-600 font-medium text-sm">Primary Concern Details:</span>
+                                <div className="text-gray-800 text-sm mt-1 whitespace-pre-wrap">
+                                  {selectedClient.concerns.primaryDescription}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Progress Notes List */}
+                          <div>
+                            <h4 className="text-md font-medium mb-4">Session History</h4>
+                            {canPerform('view_notes') ? (
+                              <TherapyNotesList 
+                                clientId={selectedClient.id} 
+                                key={notesRefresh}
+                                showClientName={false}
+                                allowEdit={canPerform('edit_notes')}
+                                allowDelete={canPerform('delete_notes')}
+                              />
+                            ) : (
+                              <div className="text-gray-500 text-center py-8">
+                                <div className="mb-2">You don't have permission to view progress notes</div>
+                                <div className="text-sm">Contact your administrator if you need access</div>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
 
-                      {/* Client Summary */}
-                      <div className="mb-6 p-4 bg-blue-50 rounded-lg border-l-4 border-blue-400">
-                        <h4 className="text-sm font-semibold text-blue-800 mb-2">Client Summary</h4>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="text-blue-600 font-medium">Primary Concern:</span>
-                            <div className="text-gray-800">{selectedClient.concerns?.primaryConcern || 'Not specified'}</div>
+                      {/* Treatment Plan Tab Content */}
+                      {activeNotesTab === 'treatment' && (
+                        <div>
+                          {/* Client Summary for Treatment Plans */}
+                          <div className="mb-6 p-4 bg-green-50 rounded-lg border-l-4 border-green-400">
+                            <h4 className="text-sm font-semibold text-green-800 mb-2">Client Summary for Treatment Planning</h4>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <span className="text-green-600 font-medium">Primary Concern:</span>
+                                <div className="text-gray-800">{selectedClient.concerns?.primaryConcern || 'Not specified'}</div>
+                              </div>
+                              <div>
+                                <span className="text-green-600 font-medium">Date of Birth:</span>
+                                <div className="text-gray-800">{selectedClient.data.birthDate}</div>
+                              </div>
+                              <div>
+                                <span className="text-green-600 font-medium">Phone:</span>
+                                <div className="text-gray-800">{selectedClient.data.phone}</div>
+                              </div>
+                              <div>
+                                <span className="text-green-600 font-medium">Emergency Contact:</span>
+                                <div className="text-gray-800">{selectedClient.data.emergencyContact?.name || 'Not provided'}</div>
+                              </div>
+                            </div>
+                            {selectedClient.concerns?.primaryDescription && (
+                              <div className="mt-3">
+                                <span className="text-green-600 font-medium text-sm">Primary Concern Details:</span>
+                                <div className="text-gray-800 text-sm mt-1 whitespace-pre-wrap">
+                                  {selectedClient.concerns.primaryDescription}
+                                </div>
+                              </div>
+                            )}
                           </div>
+
+                          {/* Treatment Plans List */}
                           <div>
-                            <span className="text-blue-600 font-medium">Date of Birth:</span>
-                            <div className="text-gray-800">{selectedClient.data.birthDate}</div>
-                          </div>
-                          <div>
-                            <span className="text-blue-600 font-medium">Phone:</span>
-                            <div className="text-gray-800">{selectedClient.data.phone}</div>
-                          </div>
-                          <div>
-                            <span className="text-blue-600 font-medium">Emergency Contact:</span>
-                            <div className="text-gray-800">{selectedClient.data.emergencyContact?.name || 'Not provided'}</div>
+                            {canPerform('view_notes') ? (
+                              <TreatmentPlanList 
+                                clientId={selectedClient.id} 
+                                clientName={`${selectedClient.data.firstName} ${selectedClient.data.lastName}`}
+                                clientData={selectedClient}
+                              />
+                            ) : (
+                              <div className="text-gray-500 text-center py-8">
+                                <div className="mb-2">You don't have permission to view treatment plans</div>
+                                <div className="text-sm">Contact your administrator if you need access</div>
+                              </div>
+                            )}
                           </div>
                         </div>
-                        {selectedClient.concerns?.primaryDescription && (
-                          <div className="mt-3">
-                            <span className="text-blue-600 font-medium text-sm">Primary Concern Details:</span>
-                            <div className="text-gray-800 text-sm mt-1 whitespace-pre-wrap">
-                              {selectedClient.concerns.primaryDescription}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Notes List */}
-                      <div>
-                        <h4 className="text-md font-medium mb-4">Session History</h4>
-                        {canPerform('view_notes') ? (
-                          <TherapyNotesList 
-                            clientId={selectedClient.id} 
-                            key={notesRefresh}
-                            showClientName={false}
-                            allowEdit={canPerform('edit_notes')}
-                            allowDelete={canPerform('delete_notes')}
-                          />
-                        ) : (
-                          <div className="text-gray-500 text-center py-8">
-                            <div className="mb-2">You don't have permission to view therapy notes</div>
-                            <div className="text-sm">Contact your administrator if you need access</div>
-                          </div>
-                        )}
-                      </div>
+                      )}
                     </section>
                   )}
+
                 </div>
               </div>
             )}

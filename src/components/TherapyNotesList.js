@@ -104,11 +104,7 @@ const TherapyNotesList = ({ clientId }) => {
   const startEditing = (note) => {
     setEditingNote({
       id: note.id,
-      subject: note.subject || '',
-      subjective: note.subjective || '',
-      objective: note.objective || '',
-      assessment: note.assessment || '',
-      plan: note.plan || ''
+      content: note.content || ''
     });
     setSelectedNote(null);
   };
@@ -126,8 +122,8 @@ const TherapyNotesList = ({ clientId }) => {
   };
 
   const saveEdit = async () => {
-    if (!editingNote || !editingNote.subject.trim()) {
-      setError('Subject is required');
+    if (!editingNote || !editingNote.content.trim()) {
+      setError('Note content is required');
       return;
     }
 
@@ -136,11 +132,7 @@ const TherapyNotesList = ({ clientId }) => {
       const noteRef = doc(db, 'clients', stringClientId, 'notes', editingNote.id);
       
       await updateDoc(noteRef, {
-        subject: editingNote.subject,
-        subjective: editingNote.subjective,
-        objective: editingNote.objective,
-        assessment: editingNote.assessment,
-        plan: editingNote.plan,
+        content: editingNote.content,
         lastModified: new Date().toISOString(),
         modifiedBy: currentUser.name || currentUser.displayName
       });
@@ -219,7 +211,12 @@ const TherapyNotesList = ({ clientId }) => {
               onClick={() => toggleNoteDetails(note)}
             >
               <div className="flex-1">
-                <h4 className="font-medium">{note.subject}</h4>
+                <h4 className="font-medium">
+                  {note.content ? 
+                    (note.content.length > 50 ? note.content.substring(0, 50) + '...' : note.content) :
+                    'Therapy Note'
+                  }
+                </h4>
                 <div className="text-sm text-gray-500">
                   {formatDate(note.timestamp)} by {note.therapistName || 'Unknown'}
                 </div>
@@ -258,31 +255,10 @@ const TherapyNotesList = ({ clientId }) => {
                 )}
 
                 {/* Note content display */}
-                {note.subjective && (
+                {note.content && (
                   <div className="mb-3">
-                    <h5 className="font-bold text-sm text-indigo-700 mb-1">Subjective</h5>
-                    <p className="text-gray-700 whitespace-pre-line">{note.subjective}</p>
-                  </div>
-                )}
-                
-                {note.objective && (
-                  <div className="mb-3">
-                    <h5 className="font-bold text-sm text-indigo-700 mb-1">Objective</h5>
-                    <p className="text-gray-700 whitespace-pre-line">{note.objective}</p>
-                  </div>
-                )}
-                
-                {note.assessment && (
-                  <div className="mb-3">
-                    <h5 className="font-bold text-sm text-indigo-700 mb-1">Assessment</h5>
-                    <p className="text-gray-700 whitespace-pre-line">{note.assessment}</p>
-                  </div>
-                )}
-                
-                {note.plan && (
-                  <div className="mb-3">
-                    <h5 className="font-bold text-sm text-indigo-700 mb-1">Plan</h5>
-                    <p className="text-gray-700 whitespace-pre-line">{note.plan}</p>
+                    <h5 className="font-bold text-sm text-indigo-700 mb-1">Therapy Note</h5>
+                    <p className="text-gray-700 whitespace-pre-line">{note.content}</p>
                   </div>
                 )}
 
@@ -302,57 +278,14 @@ const TherapyNotesList = ({ clientId }) => {
                 <h5 className="font-bold text-sm text-blue-700 mb-3">Editing Note</h5>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
-                    <input
-                      type="text"
-                      name="subject"
-                      value={editingNote.subject}
-                      onChange={handleEditChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Subjective</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Therapy Note Content</label>
                     <textarea
-                      name="subjective"
-                      value={editingNote.subjective}
+                      name="content"
+                      value={editingNote.content}
                       onChange={handleEditChange}
-                      rows={2}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Objective</label>
-                    <textarea
-                      name="objective"
-                      value={editingNote.objective}
-                      onChange={handleEditChange}
-                      rows={2}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Assessment</label>
-                    <textarea
-                      name="assessment"
-                      value={editingNote.assessment}
-                      onChange={handleEditChange}
-                      rows={2}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Plan</label>
-                    <textarea
-                      name="plan"
-                      value={editingNote.plan}
-                      onChange={handleEditChange}
-                      rows={2}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      rows={8}
+                      placeholder="Edit your therapy note content here..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-vertical"
                     />
                   </div>
                   
