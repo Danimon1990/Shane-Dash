@@ -18,6 +18,7 @@ import AISummary from './pages/AISummary';
 import Home from './pages/Home';
 import MyClients from './pages/MyClients';
 import TherapyNotes from './pages/TherapyNotes';
+import ClientInterface from './pages/ClientInterface';
 import './App.css';
 
 // Separate layout for authenticated pages
@@ -142,6 +143,13 @@ function App() {
               <ProtectedRoute>
                 <AuthenticatedLayout>
                   <TherapyNotes />
+                </AuthenticatedLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/client-interface" element={
+              <ProtectedRoute>
+                <AuthenticatedLayout>
+                  <ClientInterface />
                 </AuthenticatedLayout>
               </ProtectedRoute>
             } />

@@ -107,8 +107,8 @@ const Associates = () => {
         setLoading(true);
         setError(null);
         
-        // Use secure API client to fetch data
-        const data = await secureClientOperations.getAllClients();
+        // Use secure API client to fetch all clients (unfiltered for Associates view)
+        const data = await secureClientOperations.getAllClientsUnfiltered();
         console.log('🔍 Raw client data:', data);
         const therapistNamesFound = Array.from(new Set(data.map(client => client.therapist?.name || 'Unassigned')));
         console.log('🔍 Therapist names found in data:', therapistNamesFound);
@@ -150,8 +150,8 @@ const Associates = () => {
               if (isAdmin) return true;
               // Billing users (therapist role but not in therapist list) see all therapists
               if (isBillingUser && !isActualTherapist) return true;
-              // Actual therapists only see their own clients
-              if (isActualTherapist) return t.name === userTherapistName;
+              // Actual therapists see all associates
+              if (isActualTherapist) return true;
               // Default: no access
               return false;
             })
@@ -178,21 +178,26 @@ const Associates = () => {
 
   const handleClientClick = async (client) => {
     console.log('Client clicked:', client);
-    
-    // For all users in Associates page, show client details in third column instead of navigating
+
+    // Prepare client data with name-based ID for Firestore (LastName_FirstName)
+    const firestoreId = `${client.clientData.data.lastName}_${client.clientData.data.firstName}`.replace(/\s+/g, '');
+    const clientWithStringId = {
+      ...client.clientData,
+      id: firestoreId
+    };
+
+    // Set BOTH states immediately to prevent race condition
+    // This ensures the form always uses the same client the user clicked
     setSelectedClient(client.clientData);
+    setSelectedClientDetails(clientWithStringId);
     setActiveTab('data'); // Reset to data tab when new client is selected
-    
-    // For actual therapist users, also ensure client exists in Firestore for therapy notes
+
+    // For actual therapist users, ensure client exists in Firestore for therapy notes
+    // This runs in background - states are already synced above
     if (isActualTherapist && !isAdmin && !isBillingUser) {
       const success = await ensureClientInFirestore(client.clientData);
-      
-      if (success) {
-        setSelectedClientDetails({
-          ...client.clientData,
-          id: String(client.clientData.id) // Ensure ID is a string
-        });
-      } else {
+
+      if (!success) {
         console.error('Failed to ensure client in Firestore');
       }
     }

@@ -1,4 +1,5 @@
 const { onRequest } = require("firebase-functions/v2/https");
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { google } = require("googleapis");
 const admin = require("firebase-admin");
 const cors = require("cors")({
@@ -308,7 +309,8 @@ const getSheetDataHandler = async (req, res) => {
       let clientsToProcess = formattedClients;
       
       // For therapists, only show clients assigned to them
-      if (req.userRole === 'therapist') {
+      // Skip filtering when scope=associates so all therapists can see all clients
+      if (req.userRole === 'therapist' && req.query.scope !== 'associates') {
         console.log('🧑‍⚕️ THERAPIST ROLE DETECTED - Starting filtering process');
         
         if (!userData) {
@@ -689,3 +691,475 @@ exports.createUserProfile = onRequest({
   timeoutSeconds: 60,
   memory: '256MiB'
 }, withAuth(createUserProfileHandler, [])); // No role restriction - any authenticated user can create their own profile
+
+// AI Analysis function - triggers when a form is submitted
+const analyzeFormSubmission = async (snap, context) => {
+  const formData = snap.data();
+  const formId = snap.id;
+  
+  console.log(`🤖 Starting AI analysis for form submission: ${formId}`);
+  
+  try {
+    // Extract form data for AI analysis
+    const patientInfo = {
+      firstName: formData.firstName || '',
+      lastName: formData.lastName || '',
+      age: formData.age || '',
+      email: formData.email || '',
+      maritalStatus: formData.maritalStatus || '',
+      previousDiagnosis: formData.previousDiagnosis || '',
+      medicalCondition: formData.medicalCondition || '',
+      additionalInfo: formData.additionalInfo || '',
+      selectedCheckboxes: formData.selectedCheckboxes || {}
+    };
+    
+    // Build prompt for AI analysis based on DSM-V and ICD-10 criteria
+    const symptomsText = JSON.stringify(patientInfo.selectedCheckboxes, null, 2);
+    
+    const prompt = `You are a clinical psychologist analyzing a patient assessment form based on DSM-V and ICD-10 diagnostic criteria.
+
+Patient Information:
+- Name: ${patientInfo.firstName} ${patientInfo.lastName}
+- Age: ${patientInfo.age}
+- Marital Status: ${patientInfo.maritalStatus}
+- Previous Diagnosis: ${patientInfo.previousDiagnosis || 'None reported'}
+- Medical Conditions: ${patientInfo.medicalCondition || 'None reported'}
+- Additional Information: ${patientInfo.additionalInfo || 'None provided'}
+
+Symptoms and Concerns:
+${symptomsText}
+
+Please analyze this patient's assessment for the following conditions:
+1. Anxiety Disorders (Generalized Anxiety Disorder, Panic Disorder)
+2. Major Depressive Disorder
+3. Attention-Deficit/Hyperactivity Disorder (ADHD)
+4. Adjustment Disorders
+
+Provide:
+1. A comprehensive clinical summary of the patient's presentation
+2. Diagnostic suggestions based on DSM-V and ICD-10 criteria
+3. A suggested treatment plan
+
+Format your response as JSON with the following structure:
+{
+  "summary": "A detailed clinical summary (2-3 paragraphs)",
+  "suggestedPlan": "A suggested treatment plan based on the identified conditions (2-3 paragraphs)"
+}
+
+Be professional, clinical, and evidence-based in your analysis.`;
+
+    // Use OpenAI API (you'll need to set OPENAI_API_KEY in Firebase config)
+    // For now, we'll use a placeholder that you can replace with actual AI service
+    const aiAnalysis = await generateAIAnalysis(prompt, patientInfo);
+    
+    // Update the document with AI analysis
+    await admin.firestore().collection('form_submissions').doc(formId).update({
+      aiAnalysis: {
+        summary: aiAnalysis.summary,
+        suggestedPlan: aiAnalysis.suggestedPlan
+      },
+      analysisTimestamp: admin.firestore.FieldValue.serverTimestamp(),
+      analyzed: true
+    });
+    
+    console.log(`✅ AI analysis completed for form: ${formId}`);
+  } catch (error) {
+    console.error(`❌ Error analyzing form ${formId}:`, error);
+    // Update document with error status
+    await admin.firestore().collection('form_submissions').doc(formId).update({
+      aiAnalysis: {
+        error: 'Analysis failed. Please try again or contact support.',
+        summary: 'Analysis unavailable',
+        suggestedPlan: 'Analysis unavailable'
+      },
+      analysisTimestamp: admin.firestore.FieldValue.serverTimestamp(),
+      analyzed: false,
+      analysisError: error.message
+    });
+  }
+};
+
+// AI Analysis generation function
+// This is a placeholder - you'll need to integrate with your preferred AI service
+async function generateAIAnalysis(prompt, patientInfo) {
+  // Option 1: Use OpenAI (requires OPENAI_API_KEY in Firebase config)
+  // Option 2: Use Google's Vertex AI (requires GCP project setup)
+  // Option 3: Use Firebase's Vertex AI extension
+  
+  // For now, let's check if OpenAI API key is available
+  // The API key should be set in Firebase Functions config: firebase functions:config:set openai.api_key="YOUR_KEY"
+  const openaiApiKey = process.env.OPENAI_API_KEY;
+  
+  if (openaiApiKey) {
+    try {
+      // Using OpenAI API - newer SDK format
+      let OpenAI;
+      try {
+        OpenAI = require('openai');
+      } catch (e) {
+        console.log('OpenAI package not available, using fallback');
+        return generateFallbackAnalysis(patientInfo);
+      }
+      
+      // Use the newer OpenAI SDK format
+      const openai = new OpenAI({
+        apiKey: openaiApiKey,
+      });
+      
+      const response = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: "You are a clinical psychologist with expertise in DSM-V and ICD-10 diagnostic criteria. Provide professional, evidence-based clinical analysis."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 1500
+      });
+      
+      const content = response.choices[0].message.content;
+      
+      // Try to parse JSON from response
+      try {
+        const parsed = JSON.parse(content);
+        return {
+          summary: parsed.summary || content,
+          suggestedPlan: parsed.suggestedPlan || 'Please review the full analysis above.'
+        };
+      } catch (parseError) {
+        // If not JSON, split the content
+        const parts = content.split(/suggested plan|treatment plan/i);
+        return {
+          summary: parts[0] || content.substring(0, content.length / 2),
+          suggestedPlan: parts[1] || content.substring(content.length / 2)
+        };
+      }
+    } catch (openaiError) {
+      console.error('OpenAI API error:', openaiError);
+      throw openaiError;
+    }
+  } else {
+    // Fallback: Generate a basic analysis without AI
+    console.log('⚠️ No OpenAI API key found. Using fallback analysis.');
+    return generateFallbackAnalysis(patientInfo);
+  }
+}
+
+// Fallback analysis when AI service is not available
+function generateFallbackAnalysis(patientInfo) {
+  const symptoms = patientInfo.selectedCheckboxes;
+  const symptomCount = Object.values(symptoms).reduce((acc, category) => {
+    if (typeof category === 'object') {
+      return acc + Object.values(category).filter(v => Array.isArray(v) ? v.length > 0 : v).length;
+    }
+    return acc;
+  }, 0);
+  
+  let summary = `Patient Assessment Summary for ${patientInfo.firstName} ${patientInfo.lastName} (Age: ${patientInfo.age})\n\n`;
+  summary += `The patient has reported symptoms across multiple diagnostic categories. `;
+  summary += `A total of ${symptomCount} symptom indicators have been identified. `;
+  
+  if (patientInfo.previousDiagnosis) {
+    summary += `Previous diagnosis: ${patientInfo.previousDiagnosis}. `;
+  }
+  
+  if (patientInfo.additionalInfo) {
+    summary += `Additional context: ${patientInfo.additionalInfo.substring(0, 200)}. `;
+  }
+  
+  summary += `\n\nA comprehensive clinical evaluation is recommended to assess for Anxiety Disorders, Major Depressive Disorder, ADHD, and Adjustment Disorders based on DSM-V and ICD-10 criteria.`;
+  
+  let suggestedPlan = `Suggested Treatment Plan:\n\n`;
+  suggestedPlan += `1. Comprehensive Clinical Assessment: Conduct a full diagnostic interview to evaluate all reported symptoms against DSM-V criteria.\n\n`;
+  suggestedPlan += `2. Differential Diagnosis: Consider Anxiety Disorders, Major Depressive Disorder, ADHD, and Adjustment Disorders based on symptom presentation.\n\n`;
+  suggestedPlan += `3. Treatment Recommendations: Develop an individualized treatment plan based on confirmed diagnosis, which may include:\n`;
+  suggestedPlan += `   - Psychotherapy (CBT, DBT, or other evidence-based modalities)\n`;
+  suggestedPlan += `   - Medication evaluation if indicated\n`;
+  suggestedPlan += `   - Psychoeducation and coping strategies\n`;
+  suggestedPlan += `   - Regular monitoring and follow-up assessments\n\n`;
+  suggestedPlan += `4. Next Steps: Schedule follow-up appointment for comprehensive evaluation and treatment planning.`;
+  
+  return {
+    summary: summary,
+    suggestedPlan: suggestedPlan
+  };
+}
+
+// Export the Firestore trigger
+exports.analyzeFormSubmission = onDocumentCreated(
+  {
+    document: "form_submissions/{formId}",
+    region: 'us-central1',
+    maxInstances: 10,
+    timeoutSeconds: 540, // 9 minutes for AI processing
+    memory: '512MiB' // More memory for AI processing
+  },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) {
+      console.log('No data associated with the event');
+      return;
+    }
+    await analyzeFormSubmission(snap, event);
+  }
+);
+
+// ============================================================================
+// PUBLIC INQUIRIES - Mental Health Check-In Form for Non-Clients
+// ============================================================================
+
+// AI Analysis function for public inquiries
+const analyzePublicInquiry = async (snap, context) => {
+  const formData = snap.data();
+  const formId = snap.id;
+
+  console.log(`🤖 Starting AI analysis for public inquiry: ${formId}`);
+
+  try {
+    // Extract form data for AI analysis
+    const visitorInfo = {
+      firstName: formData.firstName || '',
+      lastName: formData.lastName || '',
+      email: formData.email || '',
+      phone: formData.phone || '',
+      age: formData.age || null,
+      gender: formData.gender || '',
+      situation: formData.situation || '',
+      identifiedConditions: formData.identifiedConditions || [],
+      selectedCheckboxes: formData.selectedCheckboxes || {},
+      scores: formData.scores || {}
+    };
+
+    // Build prompt for AI analysis - focused on supportive guidance for non-clients
+    const symptomsText = JSON.stringify(visitorInfo.selectedCheckboxes, null, 2);
+    const scoresText = JSON.stringify(visitorInfo.scores, null, 2);
+
+    const prompt = `You are a compassionate mental health professional providing supportive guidance to someone who has completed an online mental health self-assessment. This person is NOT currently a client - they are seeking initial guidance and support.
+
+Visitor Information:
+- Name: ${visitorInfo.firstName}${visitorInfo.lastName ? ' ' + visitorInfo.lastName : ''}
+- Age: ${visitorInfo.age || 'Not provided'}
+- Gender: ${visitorInfo.gender || 'Not provided'}
+- Email: ${visitorInfo.email}
+- Their description of what's going on: ${visitorInfo.situation || 'Not provided'}
+- Identified Conditions from Assessment: ${visitorInfo.identifiedConditions.join(', ') || 'None identified'}
+
+Assessment Scores:
+${scoresText}
+
+Symptoms Reported:
+${symptomsText}
+
+Please provide:
+1. A warm, supportive summary of what their responses suggest (be compassionate, not clinical)
+2. Personalized recommendations for next steps they can take
+3. Helpful resources and self-care strategies they can start with today
+4. Encouragement to seek professional support if appropriate
+
+IMPORTANT GUIDELINES:
+- Use warm, accessible language - avoid clinical jargon
+- Be supportive and validating, not diagnostic
+- Emphasize that seeking help is a sign of strength
+- Include practical, actionable suggestions
+- If any responses indicate crisis or suicidal ideation, emphasize crisis resources
+
+Format your response as JSON with the following structure:
+{
+  "personalizedGreeting": "A warm, personalized greeting using their name",
+  "summary": "A supportive summary of what their responses suggest (2-3 paragraphs)",
+  "recommendations": ["Array of 3-5 specific, actionable recommendations"],
+  "selfCareStrategies": ["Array of 3-4 self-care strategies they can start today"],
+  "encouragement": "A brief encouraging message about seeking support",
+  "urgencyLevel": "low|moderate|high (based on severity of symptoms)"
+}`;
+
+    // Generate AI analysis
+    const aiAnalysis = await generatePublicInquiryAnalysis(prompt, visitorInfo);
+
+    // Update the document with AI analysis
+    await admin.firestore().collection('public_inquiries').doc(formId).update({
+      aiAnalysis: aiAnalysis,
+      analysisTimestamp: admin.firestore.FieldValue.serverTimestamp(),
+      analyzed: true
+    });
+
+    console.log(`✅ AI analysis completed for public inquiry: ${formId}`);
+
+  } catch (error) {
+    console.error(`❌ Error analyzing public inquiry ${formId}:`, error);
+    // Update document with error status
+    await admin.firestore().collection('public_inquiries').doc(formId).update({
+      aiAnalysis: {
+        error: 'Analysis failed. Our team will review your submission manually.',
+        personalizedGreeting: `Hi ${formData.firstName || 'there'},`,
+        summary: 'Thank you for completing our mental health check-in. While our automated analysis encountered an issue, please know that your responses have been received and our team will review them.',
+        recommendations: [
+          'Consider reaching out to a mental health professional for a personal consultation',
+          'Practice self-care while waiting - even small steps like deep breathing or a short walk can help',
+          'If you\'re in crisis, please contact the 988 Suicide & Crisis Lifeline'
+        ],
+        selfCareStrategies: [
+          'Take a few deep breaths when feeling overwhelmed',
+          'Try to maintain regular sleep and eating schedules',
+          'Reach out to a trusted friend or family member'
+        ],
+        encouragement: 'Taking this assessment shows strength and self-awareness. Help is available.',
+        urgencyLevel: 'moderate'
+      },
+      analysisTimestamp: admin.firestore.FieldValue.serverTimestamp(),
+      analyzed: false,
+      analysisError: error.message
+    });
+  }
+};
+
+// AI Analysis generation function for public inquiries
+async function generatePublicInquiryAnalysis(prompt, visitorInfo) {
+  const openaiApiKey = process.env.OPENAI_API_KEY;
+
+  if (openaiApiKey) {
+    try {
+      let OpenAI;
+      try {
+        OpenAI = require('openai');
+      } catch (e) {
+        console.log('OpenAI package not available, using fallback');
+        return generatePublicInquiryFallback(visitorInfo);
+      }
+
+      const openai = new OpenAI({
+        apiKey: openaiApiKey,
+      });
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: "You are a compassionate mental health support specialist. Provide warm, supportive guidance that is accessible and non-clinical. Your goal is to help people feel heard and guide them toward appropriate resources."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 1500
+      });
+
+      const content = response.choices[0].message.content;
+
+      try {
+        return JSON.parse(content);
+      } catch (parseError) {
+        // If parsing fails, create a structured response from the content
+        return {
+          personalizedGreeting: `Hi ${visitorInfo.firstName || 'there'},`,
+          summary: content,
+          recommendations: ['Consider speaking with a mental health professional', 'Practice daily self-care', 'Reach out to supportive people in your life'],
+          selfCareStrategies: ['Deep breathing exercises', 'Regular physical activity', 'Adequate sleep'],
+          encouragement: 'Taking this step shows incredible self-awareness. You deserve support.',
+          urgencyLevel: 'moderate'
+        };
+      }
+    } catch (openaiError) {
+      console.error('OpenAI API error:', openaiError);
+      throw openaiError;
+    }
+  } else {
+    console.log('⚠️ No OpenAI API key found. Using fallback analysis for public inquiry.');
+    return generatePublicInquiryFallback(visitorInfo);
+  }
+}
+
+// Fallback analysis for public inquiries when AI service is not available
+function generatePublicInquiryFallback(visitorInfo) {
+  const conditions = visitorInfo.identifiedConditions || [];
+  const scores = visitorInfo.scores || {};
+  const age = visitorInfo.age;
+  const situation = visitorInfo.situation;
+
+  let urgencyLevel = 'low';
+  if (conditions.length >= 3 ||
+      (scores.depression && scores.depression.core >= 2 && scores.depression.additional >= 4)) {
+    urgencyLevel = 'high';
+  } else if (conditions.length >= 1) {
+    urgencyLevel = 'moderate';
+  }
+
+  const personalizedGreeting = `Hi ${visitorInfo.firstName || 'there'},`;
+
+  let summary = `Thank you for taking the time to complete this mental health check-in. `;
+
+  if (situation) {
+    summary += `We hear you - dealing with "${situation.substring(0, 100)}${situation.length > 100 ? '...' : ''}" can be really challenging. `;
+  }
+
+  if (conditions.length === 0) {
+    summary += `Based on your responses, you don't appear to be experiencing significant symptoms of the conditions we screened for. However, your mental health matters, and if you're feeling concerned about how you're doing, it's always okay to reach out to a professional.\n\n`;
+    summary += `Remember that mental health exists on a spectrum, and taking proactive steps to maintain your wellbeing is always a good idea.`;
+  } else {
+    summary += `Your responses suggest you may be experiencing some challenges related to ${conditions.join(', ')}. Please know that what you're feeling is valid, and you're not alone - millions of people experience similar challenges.\n\n`;
+    if (age && age < 25) {
+      summary += `At ${age}, you're at a time in life where many people first start noticing these kinds of challenges. The good news is that getting support early can make a real difference. `;
+    }
+    summary += `The important thing to remember is that these conditions are treatable, and with the right support, most people see significant improvement. Taking this assessment is already a positive step toward understanding yourself better.`;
+  }
+
+  const recommendations = [];
+  if (urgencyLevel === 'high') {
+    recommendations.push('We strongly encourage you to speak with a mental health professional soon');
+    recommendations.push('Contact the 988 Suicide & Crisis Lifeline if you\'re in immediate distress');
+  }
+  recommendations.push('Consider scheduling an appointment with a therapist or counselor');
+  recommendations.push('Talk to your primary care doctor about how you\'re feeling');
+  recommendations.push('Reach out to trusted friends or family members for support');
+  if (conditions.includes('Anxiety') || conditions.includes('Panic Attacks')) {
+    recommendations.push('Try breathing exercises or mindfulness apps like Headspace or Calm');
+  }
+  if (conditions.includes('Depression')) {
+    recommendations.push('Try to maintain a routine, even when it feels difficult');
+  }
+
+  const selfCareStrategies = [
+    'Practice deep breathing: breathe in for 4 counts, hold for 4, exhale for 6',
+    'Try to get outside for at least 15 minutes of natural light each day',
+    'Maintain a consistent sleep schedule, even on weekends',
+    'Limit caffeine and alcohol, which can worsen anxiety and depression'
+  ];
+
+  const encouragement = `Taking this assessment shows real self-awareness and courage. Whatever you're going through, please know that help is available and things can get better. You deserve to feel well, and reaching out for support is a sign of strength, not weakness.`;
+
+  return {
+    personalizedGreeting,
+    summary,
+    recommendations,
+    selfCareStrategies,
+    encouragement,
+    urgencyLevel
+  };
+}
+
+// Export the Firestore trigger for public inquiries
+exports.analyzePublicInquiry = onDocumentCreated(
+  {
+    document: "public_inquiries/{inquiryId}",
+    region: 'us-central1',
+    maxInstances: 10,
+    timeoutSeconds: 540, // 9 minutes for AI processing
+    memory: '512MiB' // More memory for AI processing
+  },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) {
+      console.log('No data associated with the event');
+      return;
+    }
+    await analyzePublicInquiry(snap, event);
+  }
+);

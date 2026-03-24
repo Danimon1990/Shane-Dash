@@ -581,7 +581,7 @@ const MyClients = () => {
                             <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
                               <h4 className="text-md font-medium mb-4">Create New Progress Note</h4>
                               <TherapyNoteForm
-                                clientId={selectedClient.id}
+                                clientId={`${selectedClient.data.lastName}_${selectedClient.data.firstName}`.replace(/\s+/g, '')}
                                 clientName={`${selectedClient.data.firstName} ${selectedClient.data.lastName}`}
                                 clientData={selectedClient}
                                 onClose={() => setShowNoteForm(false)}
@@ -629,8 +629,8 @@ const MyClients = () => {
                           <div>
                             <h4 className="text-md font-medium mb-4">Session History</h4>
                             {canPerform('view_notes') ? (
-                              <TherapyNotesList 
-                                clientId={selectedClient.id} 
+                              <TherapyNotesList
+                                clientId={`${selectedClient.data.lastName}_${selectedClient.data.firstName}`.replace(/\s+/g, '')}
                                 key={notesRefresh}
                                 showClientName={false}
                                 allowEdit={canPerform('edit_notes')}

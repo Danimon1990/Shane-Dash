@@ -21,7 +21,8 @@ export const ROLE_NAVIGATION = {
     { id: 'associates', label: 'Associates', path: '/associates' },
     { id: 'admin', label: 'Admin', path: '/admin' },
     { id: 'calendar', label: 'Calendar', path: '/calendar' },
-    { id: 'forms', label: 'Clinical Forms', path: '/forms' }
+    { id: 'forms', label: 'Clinical Forms', path: '/forms' },
+    { id: 'client-interface', label: 'Client Interface', path: '/client-interface' }
   ],
   [ROLES.BILLING]: [
     { id: 'billing', label: 'Billing', path: '/billing' },
@@ -31,11 +32,16 @@ export const ROLE_NAVIGATION = {
   ],
   [ROLES.THERAPIST]: [
     { id: 'my-clients', label: 'My Clients', path: '/my-clients' },
-    { id: 'calendar', label: 'Calendar', path: '/calendar' }
+    { id: 'associates', label: 'Associates', path: '/associates' },
+    { id: 'forms', label: 'Clinical Forms', path: '/forms' },
+    { id: 'calendar', label: 'Calendar', path: '/calendar' },
+    { id: 'client-interface', label: 'Client Interface', path: '/client-interface' }
   ],
   [ROLES.ASSOCIATE]: [
     { id: 'associates', label: 'Associates', path: '/associates' },
-    { id: 'calendar', label: 'Calendar', path: '/calendar' }
+    { id: 'forms', label: 'Clinical Forms', path: '/forms' },
+    { id: 'calendar', label: 'Calendar', path: '/calendar' },
+    { id: 'client-interface', label: 'Client Interface', path: '/client-interface' }
   ],
   [ROLES.VIEWER]: [
     { id: 'associates', label: 'Associates', path: '/associates' },

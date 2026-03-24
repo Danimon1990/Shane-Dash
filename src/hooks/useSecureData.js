@@ -127,6 +127,18 @@ export const useSecureData = () => {
       }
     },
 
+    // Get all clients unfiltered (for Associates view — all therapists visible to all)
+    getAllClientsUnfiltered: async () => {
+      try {
+        const url = secureApiClient.baseURLs.cloudFunctions.getSheetData + '?scope=associates';
+        const clients = await fetchSecureData(url);
+        return clients.map(client => getFilteredClientData(client)).filter(Boolean);
+      } catch (error) {
+        console.error('Failed to fetch all clients:', error);
+        throw error;
+      }
+    },
+
     // Get single client with filtering
     getClient: async (clientId) => {
       try {
