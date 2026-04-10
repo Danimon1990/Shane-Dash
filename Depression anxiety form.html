@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Self-Assessment</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 20px;
+        }
+
+        h2 {
+            margin-top: 2em;
+            font-size: 1.2em;
+            background: #f7f7f7;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        fieldset {
+            margin-bottom: 2em;
+            padding: 1em;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        legend {
+            font-weight: bold;
+            padding: 0 5px;
+        }
+
+        .question {
+            margin: 8px 0;
+        }
+
+        label {
+            margin-left: 6px;
+        }
+
+        button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 1em;
+            margin-top: 20px;
+            border-radius: 4px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f0f0f0;
+            display: none;
+            white-space: pre-line; /* preserve new lines */
+        }
+
+        /* Make the contact button visually distinct */
+        #contactButton {
+            background-color: #007BFF;
+            margin-top: 10px;
+        }
+
+        #contactButton:hover {
+            background-color: #0069d9;
+        }
+    </style>
+</head>
+<body>
+    <h1>Self-Assessment</h1>
+    <p>Please check any symptoms that apply to you. When you’re done, click “See Results.” If your responses suggest you meet criteria for any condition(s), we’ll offer an option to contact a therapist.</p>
+
+    <fieldset>
+        <legend>Generalized Anxiety Disorder (GAD)</legend>
+        <p><strong>Group A (Check at least 1)</strong></p>
+        <div class="question">
+            <input type="checkbox" id="anxA1">
+            <label for="anxA1">Do you experience palpitations or a pounding heart?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="anxA2">
+            <label for="anxA2">Do you often have an accelerated heart rate?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="anxA3">
+            <label for="anxA3">Do you sweat excessively, even without physical exertion?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="anxA4">
+            <label for="anxA4">Do you experience trembling or shaking?</label>
+        </div>
+        <p><strong>Group B (Check at least 3)</strong></p>
+        <div class="question">
+            <input type="checkbox" id="anxB1">
+            <label for="anxB1">Do you often have a dry mouth?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="anxB2">
+            <label for="anxB2">Do you have difficulty breathing?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="anxB3">
+            <label for="anxB3">Do you ever feel like you are choking?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="anxB4">
+            <label for="anxB4">Do you experience chest pain or discomfort?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="anxB5">
+            <label for="anxB5">Do you have nausea or abdominal distress?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="anxB6">
+            <label for="anxB6">Do you feel dizzy or lightheaded?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="anxB7">
+            <label for="anxB7">Do you ever feel detached from reality (derealization) or from yourself (depersonalization)?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="anxB8">
+            <label for="anxB8">Do you fear losing control, passing out, or dying?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="anxB9">
+            <label for="anxB9">Do you experience sudden hot flushes or cold chills?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="anxB10">
+            <label for="anxB10">Do you feel numbness or tingling sensations in your body?</label>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>Panic Attack</legend>
+        <p><strong>Group C (Both required)</strong></p>
+        <div class="question">
+            <input type="checkbox" id="pncC1">
+            <label for="pncC1">Have you ever had an episode of intense fear or discomfort that started abruptly, without warning?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="pncC2">
+            <label for="pncC2">Did it escalate to a peak within a few minutes and last several minutes?</label>
+        </div>
+        <p><strong>Group D (Autonomic arousal; need at least 1)</strong></p>
+        <div class="question">
+            <input type="checkbox" id="pncD1">
+            <label for="pncD1">Do you experience heart palpitations?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="pncD2">
+            <label for="pncD2">Do you sweat excessively?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="pncD3">
+            <label for="pncD3">Do you tremble or shake?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="pncD4">
+            <label for="pncD4">Do you have a dry mouth?</label>
+        </div>
+        <p><strong>Group E (Other possible symptoms)</strong></p>
+        <div class="question">
+            <input type="checkbox" id="pncE1">
+            <label for="pncE1">Do you experience chest pain?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="pncE2">
+            <label for="pncE2">Do you feel numbness or tingling in your body?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="pncE3">
+            <label for="pncE3">Do you have nausea or stomach problems?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="pncE4">
+            <label for="pncE4">Do you feel dizzy or lightheaded?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="pncE5">
+            <label for="pncE5">Do you feel detached from yourself (depersonalization) or reality (derealization)?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="pncE6">
+            <label for="pncE6">Do you fear losing control?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="pncE7">
+            <label for="pncE7">Do you have an intense fear of dying?</label>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>Depression</legend>
+        <p><strong>Core Symptoms (Need at least 2)</strong></p>
+        <div class="question">
+            <input type="checkbox" id="depC1">
+            <label for="depC1">Persistent low mood most of the day, nearly every day, for at least two weeks?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="depC2">
+            <label for="depC2">Loss of interest or pleasure in activities you usually enjoy?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="depC3">
+            <label for="depC3">A lack of energy or unusual fatigue almost every day?</label>
+        </div>
+        <p><strong>Additional Symptoms (Need at least 2)</strong></p>
+        <div class="question">
+            <input type="checkbox" id="depA1">
+            <label for="depA1">Significantly reduced ability to concentrate or focus?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="depA2">
+            <label for="depA2">Noticed a decrease in self-esteem or self-confidence?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="depA3">
+            <label for="depA3">Frequent feelings of excessive guilt or worthlessness?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="depA4">
+            <label for="depA4">Thoughts of death or suicide?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="depA5">
+            <label for="depA5">Significant changes in sleep (insomnia or excessive sleeping)?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="depA6">
+            <label for="depA6">Significant changes in appetite (increase or decrease)?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="depA7">
+            <label for="depA7">Feeling restless or physically slowed down?</label>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>ADHD (Attention-Deficit/Hyperactivity Disorder)</legend>
+        <p><strong>Inattention (Check any that apply; typically need 5-6 for adults)</strong></p>
+        <div class="question">
+            <input type="checkbox" id="adhdI1">
+            <label for="adhdI1">Often fails to give close attention to details or makes careless mistakes.</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="adhdI2">
+            <label for="adhdI2">Often has difficulty sustaining attention in tasks or play activities.</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="adhdI3">
+            <label for="adhdI3">Often does not seem to listen when spoken to directly.</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="adhdI4">
+            <label for="adhdI4">Often does not follow through on instructions and fails to finish tasks.</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="adhdI5">
+            <label for="adhdI5">Often has difficulty organizing tasks and activities.</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="adhdI6">
+            <label for="adhdI6">Often avoids or dislikes tasks requiring sustained mental effort.</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="adhdI7">
+            <label for="adhdI7">Frequently loses things necessary for tasks or activities.</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="adhdI8">
+            <label for="adhdI8">Is easily distracted by extraneous stimuli.</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="adhdI9">
+            <label for="adhdI9">Is often forgetful in daily activities.</label>
+        </div>
+        <p><strong>Hyperactivity-Impulsivity (Check any that apply; typically need 5-6 for adults)</strong></p>
+        <div class="question">
+            <input type="checkbox" id="adhdH1">
+            <label for="adhdH1">Fidgets with or taps hands or feet or squirms in seat.</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="adhdH2">
+            <label for="adhdH2">Leaves seat in situations when remaining seated is expected.</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="adhdH3">
+            <label for="adhdH3">Runs about or climbs in inappropriate situations.</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="adhdH4">
+            <label for="adhdH4">Unable to play or engage in leisure activities quietly.</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="adhdH5">
+            <label for="adhdH5">Is often “on the go,” acting as if “driven by a motor.”</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="adhdH6">
+            <label for="adhdH6">Talks excessively.</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="adhdH7">
+            <label for="adhdH7">Blurts out an answer before a question has been completed.</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="adhdH8">
+            <label for="adhdH8">Has difficulty waiting their turn.</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="adhdH9">
+            <label for="adhdH9">Interrupts or intrudes on others.</label>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>Adjustment Disorder</legend>
+        <div class="question">
+            <input type="checkbox" id="adj1">
+            <label for="adj1">Have your symptoms developed within one month of a clear stressor?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="adj2">
+            <label for="adj2">Do your symptoms feel out of proportion to the severity of that stressor?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="adj3">
+            <label for="adj3">Are you experiencing clinically significant distress or impairment in functioning?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="adj4">
+            <label for="adj4">Do you feel these symptoms do not meet criteria for another disorder?</label>
+        </div>
+        <div class="question">
+            <input type="checkbox" id="adj5">
+            <label for="adj5">Have your symptoms not persisted more than 6 months after the stressor ended?</label>
+        </div>
+    </fieldset>
+
+    <button onclick="evaluateResults()">See Results</button>
+
+    <div id="result" class="result"></div>
+
+    <button id="contactButton" style="display:none;" onclick="contactTherapist()"> Contact a Psychotherapist </button>
+
+    <script>
+        function evaluateResults() {
+            // Variables to track whether user meets any criteria
+            let meetsAny = false;
+            let resultText = "";
+
+            // ---------- ANXIETY (GAD) ----------
+            let anxAcount = 0; // Group A
+            let anxBcount = 0; // Group B
+
+            // Group A
+            if (document.getElementById("anxA1").checked) anxAcount++;
+            if (document.getElementById("anxA2").checked) anxAcount++;
+            if (document.getElementById("anxA3").checked) anxAcount++;
+            if (document.getElementById("anxA4").checked) anxAcount++;
+
+            // Group B
+            if (document.getElementById("anxB1").checked) anxBcount++;
+            if (document.getElementById("anxB2").checked) anxBcount++;
+            if (document.getElementById("anxB3").checked) anxBcount++;
+            if (document.getElementById("anxB4").checked) anxBcount++;
+            if (document.getElementById("anxB5").checked) anxBcount++;
+            if (document.getElementById("anxB6").checked) anxBcount++;
+            if (document.getElementById("anxB7").checked) anxBcount++;
+            if (document.getElementById("anxB8").checked) anxBcount++;
+            if (document.getElementById("anxB9").checked) anxBcount++;
+            if (document.getElementById("anxB10").checked) anxBcount++;
+
+            // Check Anxiety Criteria: A >= 1, B >= 3
+            if (anxAcount >= 1 && anxBcount >= 3) {
+                meetsAny = true;
+                // Example mild/moderate/severe classification based on Bcount
+                if (anxBcount >= 8) {
+                    resultText += "It looks like you may meet criteria for Generalized Anxiety Disorder (Severe).\n";
+                } else if (anxBcount >= 5) {
+                    resultText += "It looks like you may meet criteria for Generalized Anxiety Disorder (Moderate).\n";
+                } else {
+                    resultText += "It looks like you may meet criteria for Generalized Anxiety Disorder (Mild).\n";
+                }
+                resultText += "We recommend seeking professional support.\n\n";
+            }
+
+            // ---------- PANIC ATTACK ----------
+            let pncCcount = 0;
+            let pncDcount = 0;
+            let pncEcount = 0;
+
+            // Group C (both required)
+            if (document.getElementById("pncC1").checked) pncCcount++;
+            if (document.getElementById("pncC2").checked) pncCcount++;
+
+            // Group D (autonomic)
+            if (document.getElementById("pncD1").checked) pncDcount++;
+            if (document.getElementById("pncD2").checked) pncDcount++;
+            if (document.getElementById("pncD3").checked) pncDcount++;
+            if (document.getElementById("pncD4").checked) pncDcount++;
+
+            // Group E (other)
+            if (document.getElementById("pncE1").checked) pncEcount++;
+            if (document.getElementById("pncE2").checked) pncEcount++;
+            if (document.getElementById("pncE3").checked) pncEcount++;
+            if (document.getElementById("pncE4").checked) pncEcount++;
+            if (document.getElementById("pncE5").checked) pncEcount++;
+            if (document.getElementById("pncE6").checked) pncEcount++;
+            if (document.getElementById("pncE7").checked) pncEcount++;
+
+            // Criteria: both C's checked + (D+E >=4) w/ D>=1
+            let panicSymTotal = pncDcount + pncEcount;
+            if (pncCcount === 2 && panicSymTotal >= 4 && pncDcount >= 1) {
+                meetsAny = true;
+                resultText += "It looks like you may be experiencing Panic Attacks.\n";
+                resultText += "We recommend seeking professional support.\n\n";
+            }
+
+            // ---------- DEPRESSION ----------
+            let depCore = 0;
+            let depAdd = 0;
+
+            // Core
+            if (document.getElementById("depC1").checked) depCore++;
+            if (document.getElementById("depC2").checked) depCore++;
+            if (document.getElementById("depC3").checked) depCore++;
+
+            // Additional
+            if (document.getElementById("depA1").checked) depAdd++;
+            if (document.getElementById("depA2").checked) depAdd++;
+            if (document.getElementById("depA3").checked) depAdd++;
+            if (document.getElementById("depA4").checked) depAdd++;
+            if (document.getElementById("depA5").checked) depAdd++;
+            if (document.getElementById("depA6").checked) depAdd++;
+            if (document.getElementById("depA7").checked) depAdd++;
+
+            // Need depCore >= 2 and depAdd >= 2
+            if (depCore >= 2 && depAdd >= 2) {
+                meetsAny = true;
+                resultText += "It looks like you may meet criteria for Depression.\n";
+                resultText += "We recommend seeking professional support.\n\n";
+            }
+
+            // ---------- ADHD ----------
+            // Simplified approach: if Inattention >=5 OR Hyperactivity >=5 -> possible ADHD
+            let adhdInattention = 0;
+            let adhdHyper = 0;
+
+            // Inattention
+            for (let i = 1; i <= 9; i++) {
+                if (document.getElementById("adhdI" + i).checked) {
+                    adhdInattention++;
+                }
+            }
+
+            // Hyperactivity
+            for (let i = 1; i <= 9; i++) {
+                if (document.getElementById("adhdH" + i).checked) {
+                    adhdHyper++;
+                }
+            }
+
+            if (adhdInattention >= 5 || adhdHyper >= 5) {
+                meetsAny = true;
+                resultText += "It looks like you may meet criteria for ADHD.\n";
+                resultText += "We recommend seeking professional support.\n\n";
+            }
+
+            // ---------- ADJUSTMENT DISORDER ----------
+            // Example: If user checks at least 3 of these 5, they might meet criteria
+            let adjCount = 0;
+            if (document.getElementById("adj1").checked) adjCount++;
+            if (document.getElementById("adj2").checked) adjCount++;
+            if (document.getElementById("adj3").checked) adjCount++;
+            if (document.getElementById("adj4").checked) adjCount++;
+            if (document.getElementById("adj5").checked) adjCount++;
+
+            if (adjCount >= 3) {
+                meetsAny = true;
+                resultText += "It looks like you may meet criteria for an Adjustment Disorder.\n";
+                resultText += "We recommend seeking professional support.\n\n";
+            }
+
+            // ---------- FINAL OUTPUT ----------
+            if (!meetsAny) {
+                resultText = "Your answers do not indicate a clear pattern for these conditions at this time.";
+            }
+
+            const resultDiv = document.getElementById("result");
+            resultDiv.style.display = "block";
+            resultDiv.innerText = resultText;
+
+            // Show 'Contact a Psychotherapist' button if any criteria met
+            document.getElementById("contactButton").style.display = meetsAny ? "block" : "none";
+        }
+
+        function contactTherapist() {
+            const resultText = document.getElementById("result").innerText;
+            // Option 1: Save to localStorage, read on next page
+            localStorage.setItem("userDiagnosis", resultText);
+            // Redirect to therapist website
+            window.location.href = "https://shanebruce.com/new_client/";
+        }
+    </script>
+</body>
+</html>

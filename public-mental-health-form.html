@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mental Health Check-In - You're Not Alone</title>
+  <style>
+    /* Brand Colors: #434344 (dark gray), #8ca0aa (muted blue-gray), #3c5c6c (dark teal) */
+    .mh-form-container {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #e8eff3 0%, #d4dee4 100%);
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+    .mh-form-container * {
+      box-sizing: border-box;
+    }
+    .mh-form-container h1 {
+      color: #3c5c6c;
+      text-align: center;
+      font-size: 2.2em;
+      margin-bottom: 15px;
+    }
+    .mh-form-container h2 {
+      margin-top: 2em;
+      font-size: 1.2em;
+      background: #3c5c6c;
+      color: white;
+      padding: 12px 15px;
+      border-radius: 8px;
+    }
+    .mh-form-container fieldset {
+      margin-bottom: 2em;
+      padding: 1.5em;
+      border: 2px solid #3c5c6c;
+      border-radius: 12px;
+      background: white;
+      box-shadow: 0 2px 8px rgba(60, 92, 108, 0.15);
+    }
+    .mh-form-container legend {
+      font-weight: bold;
+      padding: 5px 15px;
+      color: white;
+      background: #3c5c6c;
+      border-radius: 6px;
+      font-size: 1.1em;
+    }
+    .mh-form-container .question {
+      margin: 12px 0;
+      padding: 8px;
+      border-radius: 6px;
+      transition: background-color 0.2s;
+    }
+    .mh-form-container .question:hover {
+      background-color: #e8eff3;
+    }
+    .mh-form-container label {
+      margin-left: 8px;
+      cursor: pointer;
+      color: #2d2d2d;
+      line-height: 1.5;
+    }
+    .mh-form-container label.field-label {
+      margin-left: 0;
+      font-weight: 600;
+      color: #3c5c6c;
+    }
+    .mh-form-container input[type="checkbox"] {
+      cursor: pointer;
+      width: 18px;
+      height: 18px;
+      accent-color: #3c5c6c;
+    }
+    .mh-form-container input[type="text"],
+    .mh-form-container input[type="email"],
+    .mh-form-container input[type="tel"],
+    .mh-form-container input[type="number"],
+    .mh-form-container select,
+    .mh-form-container textarea {
+      width: 100%;
+      padding: 12px;
+      margin-top: 8px;
+      border: 2px solid #8ca0aa;
+      border-radius: 8px;
+      font-size: 1em;
+      font-family: inherit;
+      color: #2d2d2d;
+      background: #fff;
+    }
+    .mh-form-container input:focus,
+    .mh-form-container select:focus,
+    .mh-form-container textarea:focus {
+      outline: none;
+      border-color: #3c5c6c;
+      box-shadow: 0 0 0 3px rgba(60, 92, 108, 0.2);
+    }
+    .mh-form-container .field-row {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+    .mh-form-container .field-row .question {
+      flex: 1;
+      min-width: 200px;
+    }
+    .mh-form-container button {
+      display: block;
+      width: 100%;
+      max-width: 500px;
+      margin: 30px auto;
+      padding: 16px;
+      background: #3c5c6c;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 1.1em;
+      font-weight: bold;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(60, 92, 108, 0.4);
+      transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
+    }
+    .mh-form-container button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(60, 92, 108, 0.5);
+      background: #4a6d7d;
+    }
+    .mh-form-container button:disabled {
+      background: #8ca0aa;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    .mh-form-container .result {
+      margin: 30px auto;
+      max-width: 700px;
+      padding: 25px;
+      background: white;
+      border-radius: 12px;
+      border-left: 5px solid #3c5c6c;
+      box-shadow: 0 4px 12px rgba(60, 92, 108, 0.15);
+      display: none;
+      white-space: pre-line;
+      line-height: 1.8;
+      color: #2d2d2d;
+    }
+    .mh-form-container #mh_contactButton {
+      background: #8ca0aa;
+      box-shadow: 0 4px 15px rgba(140, 160, 170, 0.4);
+      margin-top: 15px;
+      color: white;
+    }
+    .mh-form-container #mh_contactButton:hover {
+      box-shadow: 0 6px 20px rgba(140, 160, 170, 0.5);
+      background: #7a9099;
+    }
+    .mh-form-container p {
+      color: #2d2d2d;
+    }
+    .mh-form-container p strong {
+      color: #3c5c6c;
+    }
+    .mh-form-container .crisis-box {
+      background: #3c5c6c;
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      margin: 25px 0;
+      box-shadow: 0 4px 6px rgba(60, 92, 108, 0.3);
+    }
+    .mh-form-container .crisis-box h3 {
+      margin-top: 0;
+      font-size: 1.3em;
+      color: white;
+    }
+    .mh-form-container .crisis-box p {
+      color: white;
+    }
+    .mh-form-container .crisis-box a {
+      color: #fff;
+      text-decoration: underline;
+    }
+    .mh-form-container .crisis-resources {
+      background: rgba(255,255,255,0.95);
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+      text-align: center;
+    }
+    .mh-form-container .loading-spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,255,255,.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: mh-spin 1s ease-in-out infinite;
+      margin-right: 10px;
+      vertical-align: middle;
+    }
+    .mh-form-container .loading-spinner-dark {
+      border: 3px solid rgba(60, 92, 108, 0.2);
+      border-top-color: #3c5c6c;
+    }
+    @keyframes mh-spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="mh-form-container" id="mentalHealthForm">
+  <h1>How Are You Really Feeling?</h1>
+  <p style="font-size: 1.1em; line-height: 1.6; color: #555; text-align: center;">Taking care of your mental health is one of the most important things you can do. This quick check-in can help you understand what you might be experiencing and what support could help.</p>
+  <p style="font-size: 0.95em; color: #666; font-style: italic; text-align: center;">Your responses are completely private and confidential. This is a safe space to be honest about how you're feeling.</p>
+
+  <!-- Crisis Resources -->
+  <div class="crisis-box">
+    <h3>Need Help Right Now?</h3>
+    <p style="margin: 10px 0; font-size: 1.05em;">If you're in crisis or having thoughts of self-harm, please reach out immediately. You deserve support.</p>
+    <div class="crisis-resources">
+      <p style="margin: 5px 0; font-size: 1.1em;"><strong style="color: black;">National Suicide Prevention Lifeline:</strong> <span style="color: #3c5c6c; font-weight: bold;">988</span></p>
+      <p style="margin: 5px 0; font-size: 1.1em;"><strong style="color: black;">Crisis Text Line:</strong> <span style="color: #3c5c6c; font-weight: bold;">Text HOME to 741741</span></p>
+    </div>
+  </div>
+
+  <!-- User Information -->
+  <fieldset>
+    <legend>Let's Get Started</legend>
+    <p style="color: #666; font-size: 0.95em; margin-top: 0;">Tell us a little about yourself so we can personalize your results.</p>
+
+    <div class="field-row">
+      <div class="question">
+        <label class="field-label" for="mh_firstName">First Name *</label>
+        <input type="text" id="mh_firstName" placeholder="Your first name" required />
+      </div>
+      <div class="question">
+        <label class="field-label" for="mh_lastName">Last Name</label>
+        <input type="text" id="mh_lastName" placeholder="Your last name" />
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="question">
+        <label class="field-label" for="mh_email">Email Address *</label>
+        <input type="email" id="mh_email" placeholder="your.email@example.com" required />
+      </div>
+      <div class="question">
+        <label class="field-label" for="mh_phone">Phone (optional)</label>
+        <input type="tel" id="mh_phone" placeholder="(555) 123-4567" />
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="question">
+        <label class="field-label" for="mh_age">Age *</label>
+        <input type="number" id="mh_age" placeholder="Your age" min="13" max="120" required />
+      </div>
+      <div class="question">
+        <label class="field-label" for="mh_gender">Gender</label>
+        <select id="mh_gender">
+          <option value="">Prefer not to say</option>
+          <option value="female">Female</option>
+          <option value="male">Male</option>
+          <option value="non-binary">Non-binary</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="question">
+      <label class="field-label" for="mh_situation">Briefly describe what's been going on (optional)</label>
+      <textarea id="mh_situation" rows="3" placeholder="Share anything you'd like us to know about your current situation or what brought you here today..."></textarea>
+    </div>
+
+    <p style="font-size: 0.85em; color: #888; margin-top: 10px; margin-bottom: 0;">* Required fields. We'll never share your information with anyone.</p>
+  </fieldset>
+
+  <!-- ANXIETY (GENERALIZED ANXIETY DISORDER) -->
+  <fieldset>
+    <legend>Worry & Anxiety</legend>
+    <p style="color: #666; margin-bottom: 15px;">Check any that feel familiar to you:</p>
+    <div class="question">
+      <input type="checkbox" id="mh_anxA1">
+      <label for="mh_anxA1">I worry a lot about different things, even when there's no clear reason to</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_anxA2">
+      <label for="mh_anxA2">I feel restless or on edge, like I can't relax</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_anxA3">
+      <label for="mh_anxA3">I feel tired or drained, even when I haven't done much</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_anxA4">
+      <label for="mh_anxA4">I have trouble concentrating, or my mind goes blank</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_anxB1">
+      <label for="mh_anxB1">I get irritated or frustrated more easily than usual</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_anxB2">
+      <label for="mh_anxB2">My muscles feel tense or achy</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_anxB3">
+      <label for="mh_anxB3">I have trouble falling asleep, staying asleep, or my sleep feels restless</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_anxB4">
+      <label for="mh_anxB4">Sometimes I feel like I can't catch my breath</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_anxB5">
+      <label for="mh_anxB5">My heart races or pounds</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_anxB6">
+      <label for="mh_anxB6">I sweat a lot, even when I'm not exercising</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_anxB7">
+      <label for="mh_anxB7">I feel dizzy or lightheaded sometimes</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_anxB8">
+      <label for="mh_anxB8">I get nauseous or have an upset stomach</label>
+    </div>
+  </fieldset>
+
+  <!-- PANIC ATTACK -->
+  <fieldset>
+    <legend>Sudden Intense Fear or Panic</legend>
+    <p style="color: #666; margin-bottom: 15px;">Have you experienced sudden, overwhelming episodes of fear? Check what applies:</p>
+    <div class="question">
+      <input type="checkbox" id="mh_pncC1">
+      <label for="mh_pncC1">I've had episodes of intense fear that came on suddenly, out of nowhere</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_pncC2">
+      <label for="mh_pncC2">The fear reached its peak within minutes and lasted for several minutes</label>
+    </div>
+    <p style="color: #888; margin-top: 15px; margin-bottom: 10px; font-size: 0.95em;">During these episodes, I experience:</p>
+    <div class="question">
+      <input type="checkbox" id="mh_pncD1">
+      <label for="mh_pncD1">My heart pounds or races</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_pncD2">
+      <label for="mh_pncD2">I sweat heavily</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_pncD3">
+      <label for="mh_pncD3">I shake or tremble</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_pncD4">
+      <label for="mh_pncD4">My mouth gets really dry</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_pncE1">
+      <label for="mh_pncE1">Chest pain or discomfort</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_pncE2">
+      <label for="mh_pncE2">Numbness or tingling sensations</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_pncE3">
+      <label for="mh_pncE3">Nausea or stomach upset</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_pncE4">
+      <label for="mh_pncE4">Dizziness or feeling faint</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_pncE5">
+      <label for="mh_pncE5">I feel detached from myself or like things aren't real</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_pncE6">
+      <label for="mh_pncE6">I'm afraid I'm losing control or "going crazy"</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_pncE7">
+      <label for="mh_pncE7">I fear that I might die</label>
+    </div>
+  </fieldset>
+
+  <!-- DEPRESSION -->
+  <fieldset>
+    <legend>Low Mood & Energy</legend>
+    <p style="color: #666; margin-bottom: 15px;">Over the past couple of weeks, have you noticed any of these?</p>
+    <div class="question">
+      <input type="checkbox" id="mh_depC1">
+      <label for="mh_depC1">I've been feeling down, sad, or empty most of the time</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_depC2">
+      <label for="mh_depC2">Things I usually enjoy don't interest me or bring me pleasure anymore</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_depC3">
+      <label for="mh_depC3">I feel exhausted or have very little energy, even for small tasks</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_depA1">
+      <label for="mh_depA1">It's hard to concentrate or make decisions</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_depA2">
+      <label for="mh_depA2">I don't feel good about myself like I used to</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_depA3">
+      <label for="mh_depA3">I often feel guilty or like I'm not good enough</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_depA4">
+      <label for="mh_depA4">I've had thoughts about death or ending my life</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_depA5">
+      <label for="mh_depA5">My sleep has changed a lot (sleeping too much or too little)</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_depA6">
+      <label for="mh_depA6">My appetite has changed significantly (eating much more or much less)</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_depA7">
+      <label for="mh_depA7">I feel physically restless or slowed down</label>
+    </div>
+  </fieldset>
+
+  <!-- ADHD -->
+  <fieldset>
+    <legend>Focus & Attention</legend>
+    <p style="color: #666; margin-bottom: 15px;">Do you experience challenges with focus, organization, or restlessness?</p>
+    <p style="color: #888; font-size: 0.95em; margin-bottom: 10px;">Attention & Focus:</p>
+    <div class="question">
+      <input type="checkbox" id="mh_adhdI1">
+      <label for="mh_adhdI1">I often miss details or make careless mistakes</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_adhdI2">
+      <label for="mh_adhdI2">It's hard for me to stay focused on tasks or activities</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_adhdI3">
+      <label for="mh_adhdI3">I zone out when people talk to me, even when I'm trying to listen</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_adhdI4">
+      <label for="mh_adhdI4">I start projects but have trouble finishing them</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_adhdI5">
+      <label for="mh_adhdI5">Staying organized is really difficult for me</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_adhdI6">
+      <label for="mh_adhdI6">I avoid tasks that require a lot of mental effort or concentration</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_adhdI7">
+      <label for="mh_adhdI7">I lose my keys, phone, or other important things regularly</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_adhdI8">
+      <label for="mh_adhdI8">I get distracted easily by things around me</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_adhdI9">
+      <label for="mh_adhdI9">I forget things I need to do regularly</label>
+    </div>
+
+    <p style="color: #888; font-size: 0.95em; margin-top: 20px; margin-bottom: 10px;">Restlessness & Impulsivity:</p>
+    <div class="question">
+      <input type="checkbox" id="mh_adhdH1">
+      <label for="mh_adhdH1">I fidget a lot, tap my hands or feet, or can't sit still</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_adhdH2">
+      <label for="mh_adhdH2">I get up and move around when I'm supposed to stay seated</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_adhdH3">
+      <label for="mh_adhdH3">I feel physically restless, like I need to move or do something</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_adhdH4">
+      <label for="mh_adhdH4">I have trouble doing quiet activities or relaxing</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_adhdH5">
+      <label for="mh_adhdH5">I feel like I'm always "on the go" with lots of energy</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_adhdH6">
+      <label for="mh_adhdH6">I talk a lot, more than most people</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_adhdH7">
+      <label for="mh_adhdH7">I blurt out answers or finish people's sentences</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_adhdH8">
+      <label for="mh_adhdH8">Waiting my turn is really hard for me</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_adhdH9">
+      <label for="mh_adhdH9">I interrupt people or jump into conversations</label>
+    </div>
+  </fieldset>
+
+  <!-- ADJUSTMENT DISORDER -->
+  <fieldset>
+    <legend>Stress & Life Changes</legend>
+    <p style="color: #666; margin-bottom: 15px;">Sometimes major life changes or stressful events affect how we feel:</p>
+    <div class="question">
+      <input type="checkbox" id="mh_adj1">
+      <label for="mh_adj1">I started feeling this way within a month of a stressful event or big life change</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_adj2">
+      <label for="mh_adj2">My reaction feels stronger than what the situation would normally cause</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_adj3">
+      <label for="mh_adj3">These feelings are affecting my daily life, work, or relationships</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_adj4">
+      <label for="mh_adj4">This seems different from other mental health issues I might have</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="mh_adj5">
+      <label for="mh_adj5">It's been less than 6 months since the stressful event ended</label>
+    </div>
+  </fieldset>
+
+  <!-- Button to Evaluate Results -->
+  <button id="mh_submitButton" onclick="mhEvaluateResults()">Get My Results</button>
+
+  <!-- Result Section -->
+  <div id="mh_result" class="result"></div>
+
+  <!-- Button to Contact a Psychotherapist -->
+  <button id="mh_contactButton" style="display:none;" onclick="mhContactTherapist()">
+    Talk to a Mental Health Professional
+  </button>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+  import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+  // Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyBqIIr2bprKAMP6QEzy0U0Q7ND9T0PYN2o",
+    authDomain: "therapist-online.firebaseapp.com",
+    projectId: "therapist-online",
+    storageBucket: "therapist-online.firebasestorage.app",
+    messagingSenderId: "383278496429",
+    appId: "1:383278496429:web:c0ff8e6596ee700268e424"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // Make functions available globally
+  window.mhFirestore = { db, collection, addDoc, serverTimestamp };
+</script>
+
+<script>
+  function mhGetCheckedLabels(ids) {
+    return ids
+      .filter(id => document.getElementById(id) && document.getElementById(id).checked)
+      .map(id => {
+        const label = document.querySelector(`label[for="${id}"]`);
+        return label ? label.innerText : id;
+      });
+  }
+
+  async function mhEvaluateResults() {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const submitButton = document.getElementById('mh_submitButton');
+    const resultDiv = document.getElementById('mh_result');
+
+    try {
+      // Validate required fields
+      const firstName = document.getElementById("mh_firstName").value.trim();
+      const lastName = document.getElementById("mh_lastName").value.trim();
+      const email = document.getElementById("mh_email").value.trim();
+      const phone = document.getElementById("mh_phone").value.trim();
+      const age = document.getElementById("mh_age").value.trim();
+      const gender = document.getElementById("mh_gender").value;
+      const situation = document.getElementById("mh_situation").value.trim();
+
+      if (!firstName) {
+        alert("Please enter your first name.");
+        return;
+      }
+      if (!email) {
+        alert("Please enter your email address.");
+        return;
+      }
+      if (!email.includes('@') || !email.includes('.')) {
+        alert("Please enter a valid email address.");
+        return;
+      }
+      if (!age) {
+        alert("Please enter your age.");
+        return;
+      }
+
+      // Show loading state
+      submitButton.disabled = true;
+      submitButton.innerHTML = '<span class="loading-spinner"></span>Processing...';
+      resultDiv.style.display = "block";
+      resultDiv.innerText = "Analyzing your responses...";
+
+      // Variables to track criteria
+      let meetsAny = false;
+      let resultText = "";
+      let identifiedConditions = [];
+
+      // ---------- ANXIETY (GAD) ----------
+      let anxAcount = 0;
+      let anxBcount = 0;
+
+      ['mh_anxA1', 'mh_anxA2', 'mh_anxA3', 'mh_anxA4'].forEach(id => {
+        if (document.getElementById(id) && document.getElementById(id).checked) anxAcount++;
+      });
+      ['mh_anxB1', 'mh_anxB2', 'mh_anxB3', 'mh_anxB4', 'mh_anxB5', 'mh_anxB6', 'mh_anxB7', 'mh_anxB8'].forEach(id => {
+        if (document.getElementById(id) && document.getElementById(id).checked) anxBcount++;
+      });
+
+      let totalAnxietySymptoms = anxAcount + anxBcount;
+      if (totalAnxietySymptoms >= 3) {
+        meetsAny = true;
+        identifiedConditions.push('Anxiety');
+        resultText += "Based on what you've shared, it looks like you might be experiencing anxiety";
+        if (totalAnxietySymptoms >= 8) {
+          resultText += " that's affecting you significantly.\n\n";
+        } else if (totalAnxietySymptoms >= 5) {
+          resultText += " at a moderate level.\n\n";
+        } else {
+          resultText += ".\n\n";
+        }
+      }
+
+      // ---------- PANIC ATTACK ----------
+      let pncCcount = 0;
+      let pncDcount = 0;
+      let pncEcount = 0;
+
+      ['mh_pncC1', 'mh_pncC2'].forEach(id => {
+        if (document.getElementById(id) && document.getElementById(id).checked) pncCcount++;
+      });
+      ['mh_pncD1', 'mh_pncD2', 'mh_pncD3', 'mh_pncD4'].forEach(id => {
+        if (document.getElementById(id) && document.getElementById(id).checked) pncDcount++;
+      });
+      ['mh_pncE1', 'mh_pncE2', 'mh_pncE3', 'mh_pncE4', 'mh_pncE5', 'mh_pncE6', 'mh_pncE7'].forEach(id => {
+        if (document.getElementById(id) && document.getElementById(id).checked) pncEcount++;
+      });
+
+      let panicSymTotal = pncDcount + pncEcount;
+      if (pncCcount === 2 && panicSymTotal >= 4 && pncDcount >= 1) {
+        meetsAny = true;
+        identifiedConditions.push('Panic Attacks');
+        resultText += "It sounds like you might be experiencing panic attacks.\n\n";
+      }
+
+      // ---------- DEPRESSION ----------
+      let depCore = 0;
+      let depAdd = 0;
+
+      ['mh_depC1', 'mh_depC2', 'mh_depC3'].forEach(id => {
+        if (document.getElementById(id) && document.getElementById(id).checked) depCore++;
+      });
+      ['mh_depA1', 'mh_depA2', 'mh_depA3', 'mh_depA4', 'mh_depA5', 'mh_depA6', 'mh_depA7'].forEach(id => {
+        if (document.getElementById(id) && document.getElementById(id).checked) depAdd++;
+      });
+
+      if (depCore >= 2 && depAdd >= 2) {
+        meetsAny = true;
+        identifiedConditions.push('Depression');
+        resultText += "Based on your responses, you might be experiencing depression.\n\n";
+      }
+
+      // ---------- ADHD ----------
+      let adhdInattention = 0;
+      let adhdHyper = 0;
+
+      for (let i = 1; i <= 9; i++) {
+        if (document.getElementById("mh_adhdI" + i) && document.getElementById("mh_adhdI" + i).checked) {
+          adhdInattention++;
+        }
+        if (document.getElementById("mh_adhdH" + i) && document.getElementById("mh_adhdH" + i).checked) {
+          adhdHyper++;
+        }
+      }
+
+      if (adhdInattention >= 5 || adhdHyper >= 5) {
+        meetsAny = true;
+        identifiedConditions.push('ADHD');
+        resultText += "Your responses suggest you might be experiencing ADHD.\n\n";
+      }
+
+      // ---------- ADJUSTMENT DISORDER ----------
+      let adjCount = 0;
+      ['mh_adj1', 'mh_adj2', 'mh_adj3', 'mh_adj4', 'mh_adj5'].forEach(id => {
+        if (document.getElementById(id) && document.getElementById(id).checked) adjCount++;
+      });
+
+      if (adjCount >= 3) {
+        meetsAny = true;
+        identifiedConditions.push('Adjustment Disorder');
+        resultText += "It looks like you're going through a difficult adjustment to a life change or stressful event.\n\n";
+      }
+
+      // ---------- FINAL OUTPUT ----------
+      if (!meetsAny) {
+        resultText = `Thank you for taking the time to check in with yourself, ${firstName}.\n\n`;
+        resultText += "Based on your responses, you're not currently showing significant indicators for the specific conditions we screened for. But here's something important: your mental health journey doesn't require a diagnosis to be valid.\n\n";
+        resultText += "Sometimes we sense that something feels off, even when we can't put a name to it. That inner knowing matters. We believe everyone can benefit from exploring their internal world more deeply - understanding patterns, processing experiences, and discovering paths toward healing and thriving.\n\n";
+        resultText += "If you're feeling called to explore what's beneath the surface, we'd love to support you on that journey. Sometimes the most profound growth happens not from fixing what's broken, but from nurturing what wants to bloom.\n\n";
+        resultText += "We'll send some personalized reflections to your email. In the meantime, know that reaching out - even just filling out this form - is an act of self-care.";
+      } else {
+        resultText += `Thank you for your honesty and courage in sharing, ${firstName}.\n\n`;
+        resultText += "We see you, and we want you to know that what you're experiencing is real and valid. The good news is that these challenges are very treatable, and many people find significant relief with the right support.\n\n";
+        resultText += "We'll send detailed personalized guidance to your email with specific recommendations and self-care strategies tailored to what you shared.\n\n";
+        resultText += "You've already taken an important first step by completing this assessment. We're here for you whenever you're ready to take the next one.";
+      }
+
+      // Collect all symptom data
+      const selectedCheckboxes = {
+        anxiety: {
+          groupA: mhGetCheckedLabels(['mh_anxA1', 'mh_anxA2', 'mh_anxA3', 'mh_anxA4']),
+          groupB: mhGetCheckedLabels(['mh_anxB1', 'mh_anxB2', 'mh_anxB3', 'mh_anxB4', 'mh_anxB5', 'mh_anxB6', 'mh_anxB7', 'mh_anxB8'])
+        },
+        panic: {
+          groupC: mhGetCheckedLabels(['mh_pncC1', 'mh_pncC2']),
+          groupD: mhGetCheckedLabels(['mh_pncD1', 'mh_pncD2', 'mh_pncD3', 'mh_pncD4']),
+          groupE: mhGetCheckedLabels(['mh_pncE1', 'mh_pncE2', 'mh_pncE3', 'mh_pncE4', 'mh_pncE5', 'mh_pncE6', 'mh_pncE7'])
+        },
+        depression: {
+          core: mhGetCheckedLabels(['mh_depC1', 'mh_depC2', 'mh_depC3']),
+          additional: mhGetCheckedLabels(['mh_depA1', 'mh_depA2', 'mh_depA3', 'mh_depA4', 'mh_depA5', 'mh_depA6', 'mh_depA7'])
+        },
+        adhd: {
+          inattention: mhGetCheckedLabels(Array.from({ length: 9 }, (_, i) => `mh_adhdI${i + 1}`)),
+          hyperactivity: mhGetCheckedLabels(Array.from({ length: 9 }, (_, i) => `mh_adhdH${i + 1}`))
+        },
+        adjustment: {
+          symptoms: mhGetCheckedLabels(['mh_adj1', 'mh_adj2', 'mh_adj3', 'mh_adj4', 'mh_adj5'])
+        }
+      };
+
+      // Wait for Firebase to initialize
+      let attempts = 0;
+      while (!window.mhFirestore && attempts < 50) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+
+      if (!window.mhFirestore) {
+        throw new Error('Firebase failed to initialize. Please refresh the page and try again.');
+      }
+
+      const { db, collection, addDoc, serverTimestamp } = window.mhFirestore;
+
+      // Save to Firestore first
+      const docRef = await addDoc(collection(db, 'public_inquiries'), {
+        // Personal information for AI analysis
+        firstName: firstName,
+        lastName: lastName || null,
+        email: email,
+        phone: phone || null,
+        age: parseInt(age) || null,
+        gender: gender || null,
+        situation: situation || null,
+
+        // Timestamps
+        timestamp: serverTimestamp(),
+        clientTimestamp: new Date().toISOString(),
+
+        // Assessment results
+        initialResult: resultText,
+        meetsAnyCriteria: meetsAny,
+        identifiedConditions: identifiedConditions,
+        selectedCheckboxes: selectedCheckboxes,
+        scores: {
+          anxiety: { groupA: anxAcount, groupB: anxBcount, total: totalAnxietySymptoms },
+          panic: { groupC: pncCcount, groupD: pncDcount, groupE: pncEcount, total: panicSymTotal },
+          depression: { core: depCore, additional: depAdd },
+          adhd: { inattention: adhdInattention, hyperactivity: adhdHyper },
+          adjustment: adjCount
+        },
+
+        // Status flags
+        analyzed: false,
+        source: 'public_website'
+      });
+
+      console.log('Form submitted successfully with ID:', docRef.id);
+
+      // Show results to user
+      resultDiv.innerText = resultText;
+
+      // Show contact button
+      document.getElementById("mh_contactButton").style.display = "block";
+
+      // Reset button
+      submitButton.disabled = false;
+      submitButton.innerHTML = 'Get My Results';
+
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      resultDiv.innerText = `There was an error submitting your responses: ${error.message}\n\nPlease try again or contact support.`;
+      submitButton.disabled = false;
+      submitButton.innerHTML = 'Get My Results';
+    }
+  }
+
+  function mhContactTherapist() {
+    const resultText = document.getElementById("mh_result").innerText;
+    localStorage.setItem("userDiagnosis", resultText);
+    window.location.href = "https://shanebruce.com/new_client/";
+  }
+
+  // Prevent jQuery errors from affecting the form
+  window.addEventListener('error', function(event) {
+    if (event.error && event.error.stack && event.error.stack.includes('jquery')) {
+      event.preventDefault();
+      console.warn('Suppressed jQuery error:', event.error);
+    }
+  });
+
+  // Make functions globally available (required for WordPress)
+  window.mhEvaluateResults = mhEvaluateResults;
+  window.mhContactTherapist = mhContactTherapist;
+</script>
+
+</body>
+</html>

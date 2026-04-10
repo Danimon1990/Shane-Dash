@@ -4,7 +4,7 @@ import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { useSecureData } from '../hooks/useSecureData';
 
-const TherapyNoteForm = ({ clientId, clientName, onClose, onSaved, clientData }) => {
+const TherapyNoteForm = ({ clinicalId, clientName, onClose, onSaved, clientData }) => {
   const { currentUser } = useAuth();
   const { canPerform, userRole } = useSecureData();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,50 +41,34 @@ const TherapyNoteForm = ({ clientId, clientName, onClose, onSaved, clientData })
       }
     }
     
+    if (!clinicalId) {
+      setError('Cannot save note: this client has no clinical record linked yet. Please contact an administrator.');
+      return;
+    }
+
     if (!note.content.trim()) {
       setError('Note content is required');
       return;
     }
-    
-    // Debug logging
-    console.log('🔍 TherapyNoteForm - clientId type:', typeof clientId, 'value:', clientId);
-    console.log('🔍 TherapyNoteForm - clientName:', clientName);
-    console.log('🔍 TherapyNoteForm - userRole:', userRole);
-    console.log('🔍 TherapyNoteForm - assignedTherapist:', clientData?.therapist?.name);
-    console.log('🔍 TherapyNoteForm - currentUserName:', currentUser.name || currentUser.displayName);
-    
+
     setIsSubmitting(true);
     setError(null);
-    
+
     try {
-      // Extract names for better note identification
-      const nameParts = clientName.trim().split(' ');
-      const clientLastName = nameParts.pop() || '';
-      const clientFirstName = nameParts.join(' ') || '';
-      
-      // Create a unique ID: associateName_clientName_timestamp
       const associateName = currentUser.name || currentUser.displayName || 'Unknown';
       const timestamp = new Date().getTime();
-      const noteId = `${associateName}_${clientFirstName}_${clientLastName}_${timestamp}`;
-      
-      // Ensure clientId is a string for Firestore
-      const clientIdString = String(clientId);
-      console.log('🔍 TherapyNoteForm - clientIdString:', clientIdString);
-      
-      // Create a reference to the notes subcollection for this client
-      const notesCollectionRef = collection(db, 'clients', clientIdString, 'notes');
-      
-      // Create a document with the unique ID
+      const noteId = `${associateName}_${timestamp}`;
+
+      const notesCollectionRef = collection(db, 'clinicalRecords', clinicalId, 'notes');
       const noteRef = doc(notesCollectionRef, noteId);
-      
-      // Set the document data
+
       await setDoc(noteRef, {
         ...note,
-        clientId: clientIdString,
+        clinicalId,
         therapistId: currentUser.uid,
         therapistName: currentUser.name,
         timestamp: serverTimestamp(),
-        createdAt: new Date().toISOString() // Fallback for client-side sorting
+        createdAt: new Date().toISOString()
       });
       
       // Clear form and notify parent component

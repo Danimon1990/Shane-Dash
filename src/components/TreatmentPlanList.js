@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../firebase';
-import { collection, query, orderBy, onSnapshot, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { useSecureData } from '../hooks/useSecureData';
 import TreatmentPlanForm from './TreatmentPlanForm';
 
-const TreatmentPlanList = ({ clientId, clientName, clientData }) => {
+const TreatmentPlanList = ({ clinicalId, clientName, clientData }) => {
   const { currentUser } = useAuth();
   const { userRole, canPerform } = useSecureData();
   const [plans, setPlans] = useState([]);
@@ -17,7 +17,7 @@ const TreatmentPlanList = ({ clientId, clientName, clientData }) => {
   const [successMessage, setSuccessMessage] = useState(null);
 
   useEffect(() => {
-    if (!clientId) {
+    if (!clinicalId) {
       setPlans([]);
       setLoading(false);
       return;
@@ -34,33 +34,16 @@ const TreatmentPlanList = ({ clientId, clientName, clientData }) => {
     setError(null);
 
     try {
-      // Ensure clientId is a string
-      const stringClientId = String(clientId);
-      
-      // Create a query for the client's treatment plans, ordered by timestamp descending (newest first)
-      const plansRef = collection(db, 'clients', stringClientId, 'treatmentPlans');
+      const plansRef = collection(db, 'clinicalRecords', clinicalId, 'treatmentPlans');
       
       // Apply role-based filtering
-      let plansQuery;
-      
-      console.log('🔍 Setting up treatment plans query for user:', currentUser.uid, 'role:', userRole);
-      
-      if (userRole === 'admin') {
-        // Admins can see all plans - simple query without where clause
-        plansQuery = query(plansRef, orderBy('createdAt', 'desc'));
-        console.log('📋 Admin query: all plans ordered by createdAt');
-      } else if (userRole === 'therapist' || userRole === 'associate') {
-        // Therapists can only see plans they created
-        // Use simple where query without orderBy to avoid composite index requirement
-        plansQuery = query(plansRef, where('therapistId', '==', currentUser.uid));
-        console.log('👩‍⚕️ Therapist query: therapistId ==', currentUser.uid);
-      } else {
-        // Other roles cannot see treatment plans for HIPAA compliance
+      if (!['admin', 'therapist', 'associate'].includes(userRole)) {
         console.log('🚫 Access denied for role:', userRole);
         setError('Access denied: Treatment plans are restricted to authorized personnel');
         setLoading(false);
         return;
       }
+      const plansQuery = query(plansRef);
 
       // Subscribe to real-time updates
       const unsubscribe = onSnapshot(
@@ -123,7 +106,7 @@ const TreatmentPlanList = ({ clientId, clientName, clientData }) => {
       setLoading(false);
       setError(null);
     }
-  }, [clientId, userRole, currentUser, canPerform]);
+  }, [clinicalId, userRole, currentUser, canPerform]);
 
   const formatDate = (date) => {
     if (!date) return 'Unknown date';
@@ -158,8 +141,7 @@ const TreatmentPlanList = ({ clientId, clientName, clientData }) => {
     }
 
     try {
-      const stringClientId = String(clientId);
-      const planRef = doc(db, 'clients', stringClientId, 'treatmentPlans', planId);
+      const planRef = doc(db, 'clinicalRecords', clinicalId, 'treatmentPlans', planId);
       
       await deleteDoc(planRef);
       setSuccessMessage('Treatment plan deleted successfully!');
@@ -182,7 +164,7 @@ const TreatmentPlanList = ({ clientId, clientName, clientData }) => {
   if (showPlanForm) {
     return (
       <TreatmentPlanForm
-        clientId={clientId}
+        clinicalId={clinicalId}
         clientName={clientName}
         clientData={clientData}
         existingPlan={editingPlan}

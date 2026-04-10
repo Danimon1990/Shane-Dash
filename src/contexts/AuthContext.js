@@ -7,7 +7,7 @@ import {
   sendEmailVerification,
   onAuthStateChanged
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import authTokenManager from '../utils/authToken.js';
 import rbac from '../utils/roleBasedAccess.js';
 
@@ -65,8 +65,10 @@ export function AuthProvider({ children }) {
       const userProfile = {
         uid: user.uid,
         email: user.email,
-        emailVerified: user.emailVerified,
         ...userData,
+        // emailVerified must come AFTER ...userData so the live Firebase Auth
+        // value wins over the potentially stale value stored in Firestore.
+        emailVerified: user.emailVerified,
         name: userName,
         role: userRole
       };
@@ -180,6 +182,10 @@ export function AuthProvider({ children }) {
       const userDoc = await getDoc(doc(db, 'users', freshUser.uid));
       if (userDoc.exists()) {
         const userData = userDoc.data();
+        // Keep Firestore emailVerified in sync with Firebase Auth
+        if (!userData.emailVerified && freshUser.emailVerified) {
+          await updateDoc(doc(db, 'users', freshUser.uid), { emailVerified: true });
+        }
         await initializeUserWithTokens(freshUser, userData);
       } else {
         // Fallback for users without Firestore document

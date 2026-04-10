@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSecureData } from '../hooks/useSecureData';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import TherapyNoteForm from '../components/TherapyNoteForm';
 import TherapyNotesList from '../components/TherapyNotesList';
@@ -34,7 +34,8 @@ const Associates = () => {
     'Silvia Popa',
     'Dahkotahv Beckham',
     'Avery Williams',
-    'Nicole Mosher'
+    'Nicole Mosher',
+    'Isabelle Andrews'
   ];
 
   const isAdmin = currentUser?.role === 'admin';
@@ -179,18 +180,29 @@ const Associates = () => {
   const handleClientClick = async (client) => {
     console.log('Client clicked:', client);
 
-    // Prepare client data with name-based ID for Firestore (LastName_FirstName)
     const firestoreId = `${client.clientData.data.lastName}_${client.clientData.data.firstName}`.replace(/\s+/g, '');
     const clientWithStringId = {
       ...client.clientData,
-      id: firestoreId
+      id: firestoreId,
+      clinicalId: null // will be populated below
     };
 
-    // Set BOTH states immediately to prevent race condition
-    // This ensures the form always uses the same client the user clicked
     setSelectedClient(client.clientData);
     setSelectedClientDetails(clientWithStringId);
-    setActiveTab('data'); // Reset to data tab when new client is selected
+    setActiveTab('data');
+
+    // Look up clinicalId from Firestore by email so notes components can use it
+    const email = client.clientData.data?.email;
+    if (email) {
+      getDocs(query(collection(db, 'users'), where('email', '==', email)))
+        .then(snap => {
+          if (!snap.empty) {
+            const clinicalId = snap.docs[0].data().clinicalId || null;
+            setSelectedClientDetails(prev => prev ? { ...prev, clinicalId } : prev);
+          }
+        })
+        .catch(() => {}); // silently ignore — notes just won't load
+    }
 
     // For actual therapist users, ensure client exists in Firestore for therapy notes
     // This runs in background - states are already synced above
@@ -792,15 +804,19 @@ const Associates = () => {
 
                   {/* Form for adding new notes */}
                   {showNoteForm ? (
-                    <TherapyNoteForm 
-                      clientId={selectedClientDetails.id}
+                    <TherapyNoteForm
+                      clinicalId={selectedClientDetails.clinicalId}
                       clientName={`${selectedClientDetails.data?.firstName || ''} ${selectedClientDetails.data?.lastName || ''}`.trim()}
                       clientData={selectedClientDetails}
                       onClose={handleNoteCancel}
                       onSaved={handleNoteSaved}
                     />
                   ) : (
-                    <TherapyNotesList clientId={selectedClientDetails.id} key={notesRefresh} />
+                    <TherapyNotesList
+                      clinicalId={selectedClientDetails.clinicalId}
+                      legacyClientId={`${selectedClientDetails.data?.lastName || ''}_${selectedClientDetails.data?.firstName || ''}`.replace(/\s+/g, '')}
+                      key={notesRefresh}
+                    />
                   )}
                 </section>
               </div>

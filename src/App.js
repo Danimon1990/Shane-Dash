@@ -19,6 +19,8 @@ import Home from './pages/Home';
 import MyClients from './pages/MyClients';
 import TherapyNotes from './pages/TherapyNotes';
 import ClientInterface from './pages/ClientInterface';
+import ClientIntakeForm from './pages/ClientIntakeForm';
+import ClientSignUp from './pages/ClientSignUp';
 import './App.css';
 
 // Separate layout for authenticated pages
@@ -66,6 +68,12 @@ function App() {
         <ProfileSetupWrapper>
           <Routes>
             {/* Public routes */}
+            <Route path="/" element={<Home />} />
+            <Route path="/client-signup" element={
+              <UnauthenticatedLayout>
+                <ClientSignUp />
+              </UnauthenticatedLayout>
+            } />
             <Route path="/login" element={
               <UnauthenticatedLayout>
                 <Login />
@@ -153,10 +161,10 @@ function App() {
                 </AuthenticatedLayout>
               </ProtectedRoute>
             } />
-            <Route path="/" element={
+            <Route path="/intake" element={
               <ProtectedRoute>
                 <AuthenticatedLayout>
-                  <Home />
+                  <ClientIntakeForm />
                 </AuthenticatedLayout>
               </ProtectedRoute>
             } />

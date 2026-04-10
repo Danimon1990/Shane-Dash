@@ -4,7 +4,7 @@ import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { useSecureData } from '../hooks/useSecureData';
 
-const TreatmentPlanForm = ({ clientId, clientName, onClose, onSaved, clientData, existingPlan = null }) => {
+const TreatmentPlanForm = ({ clinicalId, clientName, onClose, onSaved, clientData, existingPlan = null }) => {
   const { currentUser } = useAuth();
   const { canPerform, userRole } = useSecureData();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -32,10 +32,10 @@ const TreatmentPlanForm = ({ clientId, clientName, onClose, onSaved, clientData,
     
     // Check if user is assigned to this client (for non-admin users)
     if (userRole !== 'admin' && clientData) {
-      const assignedTherapist = clientData.therapist?.name;
+      const assignedTherapistName = clientData.assignedTherapistName;
       const currentUserName = currentUser.name || currentUser.displayName;
-      
-      if (assignedTherapist !== currentUserName) {
+
+      if (assignedTherapistName && assignedTherapistName !== currentUserName) {
         setError('You can only create/update treatment plans for clients assigned to you');
         return;
       }
@@ -55,19 +55,12 @@ const TreatmentPlanForm = ({ clientId, clientName, onClose, onSaved, clientData,
       const timestamp = new Date().getTime();
       const planId = existingPlan?.id || `${associateName}_treatmentplan_${timestamp}`;
       
-      // Ensure clientId is a string for Firestore
-      const clientIdString = String(clientId);
-      
-      // Create a reference to the treatmentPlans subcollection for this client
-      const plansCollectionRef = collection(db, 'clients', clientIdString, 'treatmentPlans');
-      
-      // Create a document with the unique ID
+      const plansCollectionRef = collection(db, 'clinicalRecords', clinicalId, 'treatmentPlans');
       const planRef = doc(plansCollectionRef, planId);
-      
-      // Set the document data
+
       await setDoc(planRef, {
         ...plan,
-        clientId: clientIdString,
+        clinicalId,
         therapistId: currentUser.uid,
         therapistName: currentUser.name,
         timestamp: serverTimestamp(),

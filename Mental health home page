@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mental Health Check-In - You're Not Alone</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+      min-height: 100vh;
+    }
+    h1 {
+      color: #2c3e50;
+      text-align: center;
+      font-size: 2.2em;
+      margin-bottom: 15px;
+    }
+    h2 {
+      margin-top: 2em;
+      font-size: 1.2em;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 12px 15px;
+      border-radius: 8px;
+    }
+    fieldset {
+      margin-bottom: 2em;
+      padding: 1.5em;
+      border: 2px solid #e0e0e0;
+      border-radius: 12px;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    legend {
+      font-weight: bold;
+      padding: 0 10px;
+      color: #667eea;
+      font-size: 1.2em;
+    }
+    .question {
+      margin: 12px 0;
+      padding: 8px;
+      border-radius: 6px;
+      transition: background-color 0.2s;
+    }
+    .question:hover {
+      background-color: #f8f9fa;
+    }
+    label {
+      margin-left: 8px;
+      cursor: pointer;
+      color: #555;
+      line-height: 1.5;
+    }
+    input[type="checkbox"] {
+      cursor: pointer;
+      width: 18px;
+      height: 18px;
+      accent-color: #667eea;
+    }
+    button {
+      display: block;
+      width: 100%;
+      max-width: 500px;
+      margin: 30px auto;
+      padding: 16px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 1.1em;
+      font-weight: bold;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+    }
+    .result {
+      margin: 30px auto;
+      max-width: 700px;
+      padding: 25px;
+      background: white;
+      border-radius: 12px;
+      border-left: 5px solid #667eea;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      display: none;
+      white-space: pre-line;
+      line-height: 1.8;
+      color: #333;
+    }
+    /* Make the contact button visually distinct */
+    #contactButton {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+      margin-top: 15px;
+    }
+    #contactButton:hover {
+      box-shadow: 0 6px 20px rgba(245, 87, 108, 0.5);
+    }
+    p strong {
+      color: #667eea;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>How Are You Really Feeling?</h1>
+  <p style="font-size: 1.1em; line-height: 1.6; color: #555;">Taking care of your mental health is one of the most important things you can do. This quick check-in can help you understand what you might be experiencing and what support could help.</p>
+  <p style="font-size: 0.95em; color: #666; font-style: italic;">Your responses are completely private and confidential. This is a safe space to be honest about how you're feeling.</p>
+
+  <!-- Crisis Resources -->
+  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; margin: 25px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+    <h3 style="margin-top: 0; font-size: 1.3em;">Need Help Right Now?</h3>
+    <p style="margin: 10px 0; font-size: 1.05em;">If you're in crisis or having thoughts of self-harm, please reach out immediately. You deserve support.</p>
+    <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 8px; margin-top: 15px;">
+      <p style="margin: 5px 0; font-size: 1.1em;"><strong>📞 National Suicide Prevention Lifeline:</strong> 988</p>
+      <p style="margin: 5px 0; font-size: 1.1em;"><strong>💬 Crisis Text Line:</strong> Text HOME to 741741</p>
+      <p style="margin: 5px 0; font-size: 1.1em;"><strong>🌍 International:</strong> <a href="https://findahelpline.com" style="color: #fff; text-decoration: underline;">findahelpline.com</a></p>
+    </div>
+  </div>
+
+  <!-- User Information -->
+  <fieldset>
+    <legend>Let's Get Started</legend>
+    <p style="color: #666; font-size: 0.95em; margin-top: 0;">We just need a couple of details to personalize your results.</p>
+    <div class="question">
+      <label for="firstName">What should we call you?</label>
+      <input type="text" id="firstName" placeholder="Your first name" required style="width: 100%; padding: 12px; margin-top: 8px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1em;"/>
+    </div>
+    <div class="question">
+      <label for="email">Where can we send your results?</label>
+      <input type="email" id="email" placeholder="your.email@example.com" required style="width: 100%; padding: 12px; margin-top: 8px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1em;"/>
+      <p style="font-size: 0.85em; color: #888; margin-top: 5px; margin-bottom: 0;">We'll never share your information with anyone.</p>
+    </div>
+  </fieldset>
+
+  <!-- ANXIETY (GENERALIZED ANXIETY DISORDER) -->
+  <fieldset>
+    <legend>Worry & Anxiety</legend>
+    <p style="color: #666; margin-bottom: 15px;">Check any that feel familiar to you:</p>
+    <div class="question">
+      <input type="checkbox" id="anxA1">
+      <label for="anxA1">I worry a lot about different things, even when there's no clear reason to</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="anxA2">
+      <label for="anxA2">I feel restless or on edge, like I can't relax</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="anxA3">
+      <label for="anxA3">I feel tired or drained, even when I haven't done much</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="anxA4">
+      <label for="anxA4">I have trouble concentrating, or my mind goes blank</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="anxB1">
+      <label for="anxB1">I get irritated or frustrated more easily than usual</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="anxB2">
+      <label for="anxB2">My muscles feel tense or achy</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="anxB3">
+      <label for="anxB3">I have trouble falling asleep, staying asleep, or my sleep feels restless</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="anxB4">
+      <label for="anxB4">Sometimes I feel like I can't catch my breath</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="anxB5">
+      <label for="anxB5">My heart races or pounds</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="anxB6">
+      <label for="anxB6">I sweat a lot, even when I'm not exercising</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="anxB7">
+      <label for="anxB7">I feel dizzy or lightheaded sometimes</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="anxB8">
+      <label for="anxB8">I get nauseous or have an upset stomach</label>
+    </div>
+  </fieldset>
+
+  <!-- PANIC ATTACK -->
+  <fieldset>
+    <legend>Sudden Intense Fear or Panic</legend>
+    <p style="color: #666; margin-bottom: 15px;">Have you experienced sudden, overwhelming episodes of fear? Check what applies:</p>
+    <div class="question">
+      <input type="checkbox" id="pncC1">
+      <label for="pncC1">I've had episodes of intense fear that came on suddenly, out of nowhere</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="pncC2">
+      <label for="pncC2">The fear reached its peak within minutes and lasted for several minutes</label>
+    </div>
+    <p style="color: #888; margin-top: 15px; margin-bottom: 10px; font-size: 0.95em;">During these episodes, I experience:</p>
+    <div class="question">
+      <input type="checkbox" id="pncD1">
+      <label for="pncD1">My heart pounds or races</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="pncD2">
+      <label for="pncD2">I sweat heavily</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="pncD3">
+      <label for="pncD3">I shake or tremble</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="pncD4">
+      <label for="pncD4">My mouth gets really dry</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="pncE1">
+      <label for="pncE1">Chest pain or discomfort</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="pncE2">
+      <label for="pncE2">Numbness or tingling sensations</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="pncE3">
+      <label for="pncE3">Nausea or stomach upset</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="pncE4">
+      <label for="pncE4">Dizziness or feeling faint</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="pncE5">
+      <label for="pncE5">I feel detached from myself or like things aren't real</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="pncE6">
+      <label for="pncE6">I'm afraid I'm losing control or "going crazy"</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="pncE7">
+      <label for="pncE7">I fear that I might die</label>
+    </div>
+  </fieldset>
+
+  <!-- DEPRESSION -->
+  <fieldset>
+    <legend>Low Mood & Energy</legend>
+    <p style="color: #666; margin-bottom: 15px;">Over the past couple of weeks, have you noticed any of these?</p>
+    <div class="question">
+      <input type="checkbox" id="depC1">
+      <label for="depC1">I've been feeling down, sad, or empty most of the time</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="depC2">
+      <label for="depC2">Things I usually enjoy don't interest me or bring me pleasure anymore</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="depC3">
+      <label for="depC3">I feel exhausted or have very little energy, even for small tasks</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="depA1">
+      <label for="depA1">It's hard to concentrate or make decisions</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="depA2">
+      <label for="depA2">I don't feel good about myself like I used to</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="depA3">
+      <label for="depA3">I often feel guilty or like I'm not good enough</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="depA4">
+      <label for="depA4">I've had thoughts about death or ending my life</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="depA5">
+      <label for="depA5">My sleep has changed a lot (sleeping too much or too little)</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="depA6">
+      <label for="depA6">My appetite has changed significantly (eating much more or much less)</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="depA7">
+      <label for="depA7">I feel physically restless or slowed down</label>
+    </div>
+  </fieldset>
+
+  <!-- ADHD -->
+  <fieldset>
+    <legend>Focus & Attention</legend>
+    <p style="color: #666; margin-bottom: 15px;">Do you experience challenges with focus, organization, or restlessness?</p>
+    <p style="color: #888; font-size: 0.95em; margin-bottom: 10px;">Attention & Focus:</p>
+    <div class="question">
+      <input type="checkbox" id="adhdI1">
+      <label for="adhdI1">I often miss details or make careless mistakes</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="adhdI2">
+      <label for="adhdI2">It's hard for me to stay focused on tasks or activities</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="adhdI3">
+      <label for="adhdI3">I zone out when people talk to me, even when I'm trying to listen</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="adhdI4">
+      <label for="adhdI4">I start projects but have trouble finishing them</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="adhdI5">
+      <label for="adhdI5">Staying organized is really difficult for me</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="adhdI6">
+      <label for="adhdI6">I avoid tasks that require a lot of mental effort or concentration</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="adhdI7">
+      <label for="adhdI7">I lose my keys, phone, or other important things regularly</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="adhdI8">
+      <label for="adhdI8">I get distracted easily by things around me</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="adhdI9">
+      <label for="adhdI9">I forget things I need to do regularly</label>
+    </div>
+
+    <p style="color: #888; font-size: 0.95em; margin-top: 20px; margin-bottom: 10px;">Restlessness & Impulsivity:</p>
+    <div class="question">
+      <input type="checkbox" id="adhdH1">
+      <label for="adhdH1">I fidget a lot, tap my hands or feet, or can't sit still</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="adhdH2">
+      <label for="adhdH2">I get up and move around when I'm supposed to stay seated</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="adhdH3">
+      <label for="adhdH3">I feel physically restless, like I need to move or do something</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="adhdH4">
+      <label for="adhdH4">I have trouble doing quiet activities or relaxing</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="adhdH5">
+      <label for="adhdH5">I feel like I'm always "on the go" with lots of energy</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="adhdH6">
+      <label for="adhdH6">I talk a lot, more than most people</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="adhdH7">
+      <label for="adhdH7">I blurt out answers or finish people's sentences</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="adhdH8">
+      <label for="adhdH8">Waiting my turn is really hard for me</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="adhdH9">
+      <label for="adhdH9">I interrupt people or jump into conversations</label>
+    </div>
+  </fieldset>
+
+  <!-- ADJUSTMENT DISORDER -->
+  <fieldset>
+    <legend>Stress & Life Changes</legend>
+    <p style="color: #666; margin-bottom: 15px;">Sometimes major life changes or stressful events affect how we feel:</p>
+    <div class="question">
+      <input type="checkbox" id="adj1">
+      <label for="adj1">I started feeling this way within a month of a stressful event or big life change</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="adj2">
+      <label for="adj2">My reaction feels stronger than what the situation would normally cause</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="adj3">
+      <label for="adj3">These feelings are affecting my daily life, work, or relationships</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="adj4">
+      <label for="adj4">This seems different from other mental health issues I might have</label>
+    </div>
+    <div class="question">
+      <input type="checkbox" id="adj5">
+      <label for="adj5">It's been less than 6 months since the stressful event ended</label>
+    </div>
+  </fieldset>
+
+  <!-- Button to Evaluate Results -->
+  <button id="submitButton" onclick="evaluateResults()">Get My Results</button>
+
+  <!-- Result Section -->
+  <div id="result" class="result"></div>
+
+  <!-- Hidden Button to Contact a Psychotherapist -->
+  <button id="contactButton" style="display:none;" onclick="contactTherapist()">
+    Talk to a Mental Health Professional
+  </button>
+
+  <script>
+    function evaluateResults() {
+      // Prevent default form submission
+      event.preventDefault();
+      event.stopPropagation();
+
+      try {
+        // Get email first
+        const email = document.getElementById("email").value;
+        if (!email) {
+          alert("Please enter your email address before submitting.");
+          return;
+        }
+
+        // Variables to track whether user meets any criteria
+        let meetsAny = false;
+        let resultText = "";
+
+        // ---------- ANXIETY (GAD) ----------
+        let anxAcount = 0;
+        let anxBcount = 0;
+
+        // Group A
+        if (document.getElementById("anxA1").checked) anxAcount++;
+        if (document.getElementById("anxA2").checked) anxAcount++;
+        if (document.getElementById("anxA3").checked) anxAcount++;
+        if (document.getElementById("anxA4").checked) anxAcount++;
+
+        // Group B
+        if (document.getElementById("anxB1").checked) anxBcount++;
+        if (document.getElementById("anxB2").checked) anxBcount++;
+        if (document.getElementById("anxB3").checked) anxBcount++;
+        if (document.getElementById("anxB4").checked) anxBcount++;
+        if (document.getElementById("anxB5").checked) anxBcount++;
+        if (document.getElementById("anxB6").checked) anxBcount++;
+        if (document.getElementById("anxB7").checked) anxBcount++;
+        if (document.getElementById("anxB8").checked) anxBcount++;
+
+        // Check Anxiety Criteria (updated: based on total symptoms)
+        let totalAnxietySymptoms = anxAcount + anxBcount;
+        if (totalAnxietySymptoms >= 3) {
+          meetsAny = true;
+          resultText += "Based on what you've shared, it looks like you might be experiencing anxiety";
+          if (totalAnxietySymptoms >= 8) {
+            resultText += " that's affecting you significantly.\n\n";
+          } else if (totalAnxietySymptoms >= 5) {
+            resultText += " at a moderate level.\n\n";
+          } else {
+            resultText += ".\n\n";
+          }
+          resultText += "The good news? Anxiety is very treatable. Many people find relief through therapy, lifestyle changes, and sometimes medication. You don't have to feel this way forever.\n\n";
+        }
+
+        // ---------- PANIC ATTACK ----------
+        let pncCcount = 0;
+        let pncDcount = 0;
+        let pncEcount = 0;
+
+        // Group C (both required)
+        if (document.getElementById("pncC1").checked) pncCcount++;
+        if (document.getElementById("pncC2").checked) pncCcount++;
+
+        // Group D (autonomic)
+        if (document.getElementById("pncD1").checked) pncDcount++;
+        if (document.getElementById("pncD2").checked) pncDcount++;
+        if (document.getElementById("pncD3").checked) pncDcount++;
+        if (document.getElementById("pncD4").checked) pncDcount++;
+
+        // Group E (other)
+        if (document.getElementById("pncE1").checked) pncEcount++;
+        if (document.getElementById("pncE2").checked) pncEcount++;
+        if (document.getElementById("pncE3").checked) pncEcount++;
+        if (document.getElementById("pncE4").checked) pncEcount++;
+        if (document.getElementById("pncE5").checked) pncEcount++;
+        if (document.getElementById("pncE6").checked) pncEcount++;
+        if (document.getElementById("pncE7").checked) pncEcount++;
+
+        // Criteria: both C's checked + (D+E >=4) w/ D>=1
+        let panicSymTotal = pncDcount + pncEcount;
+        if (pncCcount === 2 && panicSymTotal >= 4 && pncDcount >= 1) {
+          meetsAny = true;
+          resultText += "It sounds like you might be experiencing panic attacks. These sudden waves of intense fear can be really scary, but here's something important to know: they're not dangerous, and they are highly treatable.\n\n";
+          resultText += "With the right support, you can learn to manage and even prevent these episodes. Many people recover completely.\n\n";
+        }
+
+        // ---------- DEPRESSION ----------
+        let depCore = 0;
+        let depAdd = 0;
+
+        // Core
+        if (document.getElementById("depC1").checked) depCore++;
+        if (document.getElementById("depC2").checked) depCore++;
+        if (document.getElementById("depC3").checked) depCore++;
+
+        // Additional
+        if (document.getElementById("depA1").checked) depAdd++;
+        if (document.getElementById("depA2").checked) depAdd++;
+        if (document.getElementById("depA3").checked) depAdd++;
+        if (document.getElementById("depA4").checked) depAdd++;
+        if (document.getElementById("depA5").checked) depAdd++;
+        if (document.getElementById("depA6").checked) depAdd++;
+        if (document.getElementById("depA7").checked) depAdd++;
+
+        // Need depCore >= 2 and depAdd >= 2
+        if (depCore >= 2 && depAdd >= 2) {
+          meetsAny = true;
+          resultText += "Based on your responses, you might be experiencing depression. We want you to know something important: this isn't your fault, and you're not alone. Depression is a real medical condition that affects millions of people.\n\n";
+          resultText += "The most important thing to remember is that depression is treatable. With proper support - whether that's therapy, medication, lifestyle changes, or a combination - most people see significant improvement. There is hope, and there is help available.\n\n";
+        }
+
+        // ---------- ADHD ----------
+        // Simplified approach: if Inattention >=5 OR Hyperactivity >=5 -> possible ADHD
+        let adhdInattention = 0;
+        let adhdHyper = 0;
+
+        // Inattention
+        for (let i = 1; i <= 9; i++) {
+          if (document.getElementById("adhdI" + i).checked) {
+            adhdInattention++;
+          }
+        }
+        // Hyperactivity
+        for (let i = 1; i <= 9; i++) {
+          if (document.getElementById("adhdH" + i).checked) {
+            adhdHyper++;
+          }
+        }
+
+        if (adhdInattention >= 5 || adhdHyper >= 5) {
+          meetsAny = true;
+          resultText += "Your responses suggest you might be experiencing ADHD. If this resonates with you, know that ADHD is a neurodevelopmental condition that affects how your brain processes information and regulates attention.\n\n";
+          resultText += "Here's the empowering part: understanding ADHD can be life-changing. Many people find that with the right strategies, support, and sometimes medication, they can harness their unique strengths while managing the challenges. You're not broken - your brain just works differently.\n\n";
+        }
+
+        // ---------- ADJUSTMENT DISORDER ----------
+        // Example: If user checks at least 3 of these 5, they might meet criteria
+        let adjCount = 0;
+        if (document.getElementById("adj1").checked) adjCount++;
+        if (document.getElementById("adj2").checked) adjCount++;
+        if (document.getElementById("adj3").checked) adjCount++;
+        if (document.getElementById("adj4").checked) adjCount++;
+        if (document.getElementById("adj5").checked) adjCount++;
+
+        if (adjCount >= 3) {
+          meetsAny = true;
+          resultText += "It looks like you're going through a difficult adjustment to a life change or stressful event. This is actually a very normal response to abnormal circumstances - your feelings make sense given what you're experiencing.\n\n";
+          resultText += "The good news is that adjustment difficulties are typically temporary and respond well to support. Talking with a therapist can help you process what's happening and develop coping strategies. You won't always feel this way.\n\n";
+        }
+
+        // ---------- FINAL OUTPUT ----------
+        if (!meetsAny) {
+          resultText = "Thank you for taking the time to check in with yourself. Based on your responses, you're not currently showing significant indicators for the conditions we screened for.\n\nThat said, if you're still concerned about how you're feeling, trust your instincts. You know yourself best. It's always okay to reach out to a mental health professional just to talk things through.\n\nRemember: taking care of your mental health is just as important as taking care of your physical health. Keep checking in with yourself.";
+        } else {
+          resultText += "What to do next:\n";
+          resultText += "• Consider reaching out to a mental health professional for a proper evaluation\n";
+          resultText += "• Talk to someone you trust about how you're feeling\n";
+          resultText += "• Remember that seeking help is a sign of strength, not weakness\n";
+          resultText += "• Take care of yourself - you deserve support and relief\n\n";
+          resultText += "You've taken an important first step by completing this assessment. We're here to help you take the next one.";
+        }
+
+        // Show loading state
+        const resultDiv = document.getElementById("result");
+        resultDiv.style.display = "block";
+        resultDiv.innerText = "Processing your responses...";
+
+        const selectedCheckboxes = {
+          anxiety: {
+            groupA: ['anxA1', 'anxA2', 'anxA3', 'anxA4']
+              .filter(id => document.getElementById(id).checked)
+              .map(id => document.querySelector(`label[for="${id}"]`).innerText),
+            groupB: ['anxB1', 'anxB2', 'anxB3', 'anxB4', 'anxB5', 'anxB6', 'anxB7', 'anxB8']
+              .filter(id => document.getElementById(id).checked)
+              .map(id => document.querySelector(`label[for="${id}"]`).innerText)
+          },
+          panic: {
+            groupC: ['pncC1', 'pncC2']
+              .filter(id => document.getElementById(id).checked)
+              .map(id => document.querySelector(`label[for="${id}"]`).innerText),
+            groupD: ['pncD1', 'pncD2', 'pncD3', 'pncD4']
+              .filter(id => document.getElementById(id).checked)
+              .map(id => document.querySelector(`label[for="${id}"]`).innerText),
+            groupE: ['pncE1', 'pncE2', 'pncE3', 'pncE4', 'pncE5', 'pncE6', 'pncE7']
+              .filter(id => document.getElementById(id).checked)
+              .map(id => document.querySelector(`label[for="${id}"]`).innerText)
+          },
+          depression: {
+            core: ['depC1', 'depC2', 'depC3']
+              .filter(id => document.getElementById(id).checked)
+              .map(id => document.querySelector(`label[for="${id}"]`).innerText),
+            additional: ['depA1', 'depA2', 'depA3', 'depA4', 'depA5', 'depA6', 'depA7']
+              .filter(id => document.getElementById(id).checked)
+              .map(id => document.querySelector(`label[for="${id}"]`).innerText)
+          },
+          adhd: {
+            inattention: Array.from({ length: 9 }, (_, i) => `adhdI${i + 1}`)
+              .filter(id => document.getElementById(id).checked)
+              .map(id => document.querySelector(`label[for="${id}"]`).innerText),
+            hyperactivity: Array.from({ length: 9 }, (_, i) => `adhdH${i + 1}`)
+              .filter(id => document.getElementById(id).checked)
+              .map(id => document.querySelector(`label[for="${id}"]`).innerText)
+          },
+          adjustment: {
+            symptoms: ['adj1', 'adj2', 'adj3', 'adj4', 'adj5']
+              .filter(id => document.getElementById(id).checked)
+              .map(id => document.querySelector(`label[for="${id}"]`).innerText)
+          }
+        };
+
+        // Send data to your FastAPI backend
+        const serverUrl = "https://fastapi-app-540067385489.us-central1.run.app";  // Your production domain
+        const submitUrl = serverUrl + "/submit-form";
+        console.log("Submitting to URL:", submitUrl);
+        
+        fetch(submitUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          mode: "cors",
+          credentials: "include",
+          body: JSON.stringify({
+            email: email,
+            timestamp: new Date().toISOString(),
+            result: resultText || "No significant indicators found.",
+            selectedCheckboxes: selectedCheckboxes,
+            firstName: document.getElementById("firstName").value
+          })
+        })
+        .then(async response => {
+          console.log("Response status:", response.status);
+          console.log("Response headers:", Object.fromEntries(response.headers.entries()));
+          console.log("Response URL:", response.url);
+          
+          // First check if the response is ok
+          if (!response.ok) {
+            const contentType = response.headers.get("content-type");
+            console.log("Error response content-type:", contentType);
+            
+            if (contentType && contentType.includes("application/json")) {
+              const errorData = await response.json();
+              throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+            } else {
+              const text = await response.text();
+              console.error("Non-JSON error response:", text);
+              throw new Error(`Server error: ${response.status} ${response.statusText}`);
+            }
+          }
+          
+          // Then check content type
+          const contentType = response.headers.get("content-type");
+          console.log("Success response content-type:", contentType);
+          
+          if (!contentType || !contentType.includes("application/json")) {
+            const text = await response.text();
+            console.error("Non-JSON success response:", text);
+            throw new Error("Server returned non-JSON response");
+          }
+          
+          // Parse JSON
+          const data = await response.json();
+          return data;
+        })
+        .then(data => {
+          console.log("Server response:", data);
+          // Always show the result text
+          resultDiv.innerText = resultText;
+          document.getElementById("contactButton").style.display = meetsAny ? "block" : "none";
+        })
+        .catch(error => {
+          console.error("Error submitting form:", error);
+          resultDiv.innerText = `There was an error submitting your responses: ${error.message}\n\n${resultText}`;
+          // Show contact button if criteria met, even if submission failed
+          document.getElementById("contactButton").style.display = meetsAny ? "block" : "none";
+        });
+
+      } catch (error) {
+        console.error("Error in form evaluation:", error);
+        alert("There was an error processing your responses. Please try again.");
+      }
+    }
+
+    // Add this to prevent any jQuery-related errors from affecting your code
+    window.addEventListener('error', function(event) {
+      // If the error is from jQuery, prevent it from stopping execution
+      if (event.error && event.error.stack && event.error.stack.includes('jquery')) {
+        event.preventDefault();
+        console.warn('Suppressed jQuery error:', event.error);
+      }
+    });
+
+    function contactTherapist() {
+      const resultText = document.getElementById("result").innerText;
+      localStorage.setItem("userDiagnosis", resultText);
+      window.location.href = "https://shanebruce.com/new_client/";
+    }
+  </script>
+</body>
+</html>

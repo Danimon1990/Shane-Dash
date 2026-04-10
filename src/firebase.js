@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, connectAuthEmulator } from 'firebase/auth';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 import { getAnalytics } from "firebase/analytics";
 
 // Initialize Firebase
@@ -18,16 +18,6 @@ const app = initializeApp({
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Connect to emulators in development
-if (process.env.REACT_APP_USE_LOCAL_FUNCTIONS === 'true') {
-  try {
-    connectAuthEmulator(auth, 'http://127.0.0.1:9099');
-    connectFirestoreEmulator(db, '127.0.0.1', 8080);
-    console.log('🔧 Connected to Firebase emulators');
-  } catch (error) {
-    console.log('⚠️ Emulator connection failed (probably already connected):', error.message);
-  }
-}
 // Initialize analytics but don't export it since it's not used
 getAnalytics(app);
 

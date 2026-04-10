@@ -1,0 +1,286 @@
+rules_version = '2';
+// ============================================================
+// Shane Bruce Mental Health & Coaching — Firestore Security Rules
+// Created: 2026-04-07
+//
+// ARCHITECTURE OVERVIEW
+// ---------------------
+// Two-layer data model separating PII from clinical data:
+//
+//   Bucket A — users/{uid}
+//     PII: name, email, phone, address, DOB, insurance, payment token
+//     Contains: clinicalId (UUID linking to Bucket B)
+//     AI access: NEVER
+//
+//   Bucket B — clinicalRecords/{clinicalId}
+//     De-identified clinical data: symptoms, scores, notes, chat
+//     No PII in this collection
+//     AI access: YES (via Cloud Functions using Admin SDK)
+//
+// NOTE ON CLOUD FUNCTIONS:
+//   Cloud Functions that use the Admin SDK bypass these rules entirely.
+//   Rules here protect DIRECT CLIENT SDK ACCESS only.
+//   AI functions must enforce PII exclusion at the code level (see index.js).
+//
+// ROLES (stored in users/{uid}.role):
+//   admin     — full access everywhere
+//   billing   — PII + client list, no clinical write
+//   therapist — clinical read/write for own clients, limited PII
+//   associate — same as therapist, scoped
+//   viewer    — read-only, limited scope
+//   client    — own record only (portal, future)
+// ============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ----------------------------------------------------------
+    // HELPER FUNCTIONS
+    // ----------------------------------------------------------
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    // Read the current user's profile from users/{uid}
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function getRole() {
+      return userDoc().role;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && getRole() == 'admin';
+    }
+
+    function isBilling() {
+      return isAuthenticated() && getRole() == 'billing';
+    }
+
+    function isTherapist() {
+      return isAuthenticated() && getRole() == 'therapist';
+    }
+
+    function isAssociate() {
+      return isAuthenticated() && getRole() == 'associate';
+    }
+
+    function isClient() {
+      return isAuthenticated() && getRole() == 'client';
+    }
+
+    // Staff = any internal role (not client / unauthenticated)
+    function isStaff() {
+      return isAuthenticated() && getRole() in ['admin', 'billing', 'therapist', 'associate', 'viewer'];
+    }
+
+    // Clinical staff = roles that write clinical data
+    function isClinicalStaff() {
+      return isAuthenticated() && getRole() in ['admin', 'therapist', 'associate'];
+    }
+
+    // Admin or billing = roles that see all clients and PII
+    function isAdminOrBilling() {
+      return isAdmin() || isBilling();
+    }
+
+    // The client owns their clinical record if their clinicalId matches
+    function ownsRecord(clinicalId) {
+      return isClient() && userDoc().clinicalId == clinicalId;
+    }
+
+    // ----------------------------------------------------------
+    // users/{uid} — IDENTITY / PII LAYER
+    // ----------------------------------------------------------
+    // Contains: name, email, phone, DOB, address, insurance, paymentToken, role, clinicalId
+    // AI layer must NEVER read this collection.
+    // ----------------------------------------------------------
+    match /users/{userId} {
+      // A user can read their own profile.
+      // Staff can read all profiles (needed for therapist lookup, billing, admin panel).
+      allow read: if isAuthenticated() && (uid() == userId || isStaff());
+
+      // A user creates their own profile on signup.
+      allow create: if isAuthenticated() && uid() == userId;
+
+      // A user can update their own profile.
+      // Admin can update any profile (role changes, onboarding).
+      allow update: if isAuthenticated() && (uid() == userId || isAdmin());
+
+      // Only admin can delete user profiles.
+      allow delete: if isAdmin();
+    }
+
+    // ----------------------------------------------------------
+    // clients/{clientId}/notes — EXISTING PROGRESS NOTES
+    // DO NOT DELETE OR MODIFY THIS COLLECTION OR ITS DATA.
+    // These rules lock down existing data while migration is built.
+    // ----------------------------------------------------------
+    match /clients/{clientId} {
+      // Staff can read client documents (currently name-keyed, e.g. Smith_John).
+      allow read: if isStaff();
+
+      // Client documents are not created directly from the app.
+      // They are managed via Admin SDK or migration scripts only.
+      allow write: if false;
+
+      match /notes/{noteId} {
+        // All staff can read notes.
+        allow read: if isStaff();
+
+        // Clinical staff can create notes for any client.
+        allow create: if isClinicalStaff();
+
+        // Clinical staff can update their own notes. Admin can update any.
+        allow update: if isAdmin() ||
+                       (isClinicalStaff() && resource.data.therapistId == uid());
+
+        // Only admin can delete notes.
+        allow delete: if isAdmin();
+      }
+    }
+
+    // ----------------------------------------------------------
+    // form_submissions — EXISTING INTAKE FORM DATA
+    // Legacy collection — locked down while migration is built.
+    // ----------------------------------------------------------
+    match /form_submissions/{docId} {
+      // Admin and billing can read all submissions.
+      // Therapists can read (needed for client onboarding review).
+      allow read: if isAdminOrBilling() || isTherapist() || isAssociate();
+
+      // Public form submissions are unauthenticated. Allow public create.
+      allow create: if true;
+
+      // Admin can update (e.g. marking reviewed).
+      allow update: if isAdmin();
+
+      // Only admin can delete.
+      allow delete: if isAdmin();
+    }
+
+    // ----------------------------------------------------------
+    // public_inquiries — EXISTING PUBLIC SCREENER DATA
+    // Legacy collection — locked down while migration is built.
+    // New submissions should use publicLeads instead (see below).
+    // ----------------------------------------------------------
+    match /public_inquiries/{docId} {
+      allow read: if isAdminOrBilling() || isTherapist() || isAssociate();
+
+      // Still accepting public writes (old form is live).
+      allow create: if true;
+
+      // Therapists and admin can update (e.g. status changes, AI write-back).
+      allow update: if isAdmin() || isTherapist() || isAssociate();
+
+      // Only admin can delete.
+      allow delete: if isAdmin();
+    }
+
+    // ----------------------------------------------------------
+    // NEW: clinicalRecords/{clinicalId} — CLINICAL / DE-IDENTIFIED LAYER
+    // ----------------------------------------------------------
+    // Contains: assignedTherapistId (UID), status, intakeDate, conditions,
+    //           insuranceType (category only — not member ID)
+    //
+    // Subcollections:
+    //   /notes/{noteId}        — SOAP notes (therapist-written)
+    //   /assessments/{id}      — symptom scores, AI analysis
+    //   /chatHistory/{chatId}  — AI chatbot session messages
+    //
+    // AI Cloud Functions read ONLY from this collection, never from users/.
+    // ----------------------------------------------------------
+    match /clinicalRecords/{clinicalId} {
+      // Staff can read all clinical records.
+      // A client can read their own record (matched by clinicalId in their users doc).
+      allow read: if isStaff() || ownsRecord(clinicalId);
+
+      // Admin and therapists create clinical records (during client onboarding).
+      allow create: if isAdmin() || isTherapist();
+
+      // Admin and therapists can update clinical records.
+      allow update: if isAdmin() || isTherapist();
+
+      // Only admin can delete.
+      allow delete: if isAdmin();
+
+      // /notes — SOAP notes written by therapists
+      match /notes/{noteId} {
+        allow read: if isStaff() || ownsRecord(clinicalId);
+
+        // Clinical staff write notes. No PII allowed — training / policy enforced.
+        allow create: if isClinicalStaff();
+
+        // Authors edit their own notes. Admin edits any.
+        allow update: if isAdmin() ||
+                       (isClinicalStaff() && resource.data.therapistId == uid());
+
+        allow delete: if isAdmin();
+      }
+
+      // /assessments — symptom checkboxes, scores, AI analysis
+      match /assessments/{assessmentId} {
+        allow read: if isStaff() || ownsRecord(clinicalId);
+
+        // Clients submit their own assessments. Staff can also create.
+        allow create: if isStaff() || ownsRecord(clinicalId);
+
+        // AI Cloud Function writes aiAnalysis back via Admin SDK (bypasses rules).
+        // Staff can update manually (e.g. corrections).
+        allow update: if isAdmin() || isTherapist() || ownsRecord(clinicalId);
+
+        allow delete: if isAdmin();
+      }
+
+      // /chatHistory — AI chatbot sessions
+      match /chatHistory/{chatId} {
+        // Client reads their own chat. Staff can review.
+        allow read: if isStaff() || ownsRecord(clinicalId);
+
+        // Only the record owner (client) writes to chat.
+        // AI responses are written back via Admin SDK (bypasses rules).
+        allow create: if ownsRecord(clinicalId);
+        allow update: if ownsRecord(clinicalId);
+
+        allow delete: if isAdmin();
+      }
+    }
+
+    // ----------------------------------------------------------
+    // NEW: publicLeads/{docId} — PUBLIC FORM SUBMISSIONS (PRE-CLIENT)
+    // ----------------------------------------------------------
+    // Replaces public_inquiries for new form submissions.
+    // Holds PII + clinical together only until the person is converted
+    // to a client, at which point data is split into users/ + clinicalRecords/.
+    //
+    // AI reads ONLY: age, gender, situation, scores, checkboxes, identifiedConditions
+    // AI never reads: firstName, lastName, email, phone (enforced in Cloud Function code)
+    // ----------------------------------------------------------
+    match /publicLeads/{docId} {
+      // Staff review leads.
+      allow read: if isAdminOrBilling() || isTherapist() || isAssociate();
+
+      // Unauthenticated public form submission.
+      allow create: if true;
+
+      // Staff update status (new → reviewed → converted/declined).
+      allow update: if isAdmin() || isTherapist() || isAssociate();
+
+      // Only admin deletes.
+      allow delete: if isAdmin();
+    }
+
+    // ----------------------------------------------------------
+    // CATCH-ALL: deny everything not explicitly matched above
+    // ----------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

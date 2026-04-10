@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../firebase';
-import { collection, query, orderBy, onSnapshot, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { useSecureData } from '../hooks/useSecureData';
 
-const TherapyNotesList = ({ clientId }) => {
+// legacyClientId: optional fallback path clients/{legacyClientId}/notes
+// for migrated clients whose notes weren't copied to clinicalRecords yet
+const TherapyNotesList = ({ clinicalId, legacyClientId }) => {
   const { currentUser } = useAuth();
   const { userRole, canPerform } = useSecureData();
   const [notes, setNotes] = useState([]);
@@ -15,15 +17,20 @@ const TherapyNotesList = ({ clientId }) => {
   const [successMessage, setSuccessMessage] = useState(null);
 
   useEffect(() => {
-    if (!clientId) {
+    if (!clinicalId && !legacyClientId) {
       setNotes([]);
       setLoading(false);
       return;
     }
 
-    // Check permissions before loading notes
     if (!canPerform('view_notes')) {
       setError('Insufficient permissions to view therapy notes');
+      setLoading(false);
+      return;
+    }
+
+    if (!['admin', 'therapist', 'associate'].includes(userRole)) {
+      setError('Access denied: Therapy notes are restricted to authorized personnel');
       setLoading(false);
       return;
     }
@@ -31,96 +38,73 @@ const TherapyNotesList = ({ clientId }) => {
     setLoading(true);
     setError(null);
 
-    try {
-      // Ensure clientId is a string
-      const stringClientId = String(clientId);
-      
-      // Create a query for the client's notes, ordered by timestamp descending (newest first)
-      const notesRef = collection(db, 'clients', stringClientId, 'notes');
-      
-      console.log('🔍 Setting up therapy notes query for user:', currentUser.uid, 'role:', userRole);
-      
-      // Apply role-based filtering
-      let notesQuery;
-      
-      if (userRole === 'admin') {
-        // Admins can see all notes - simple query without where clause
-        notesQuery = query(notesRef, orderBy('createdAt', 'desc'));
-        console.log('📋 Admin query: all notes ordered by createdAt');
-      } else if (userRole === 'therapist' || userRole === 'associate') {
-        // Therapists can only see notes they created
-        // Use simple where query without orderBy to avoid composite index requirement
-        notesQuery = query(notesRef, where('therapistId', '==', currentUser.uid));
-        console.log('👩‍⚕️ Therapist query: therapistId ==', currentUser.uid);
-      } else {
-        // Other roles cannot see therapy notes for HIPAA compliance
-        console.log('🚫 Access denied for role:', userRole);
-        setError('Access denied: Therapy notes are restricted to authorized personnel');
-        setLoading(false);
-        return;
-      }
+    // Track notes from each source separately, then merge
+    let newPathNotes = [];
+    let legacyPathNotes = [];
 
-      // Subscribe to real-time updates
-      const unsubscribe = onSnapshot(
-        notesQuery,
-        (snapshot) => {
-          console.log('📄 Firestore snapshot received:', snapshot.docs.length, 'documents');
-          
-          const notesList = snapshot.docs.map(doc => {
-            const data = doc.data();
-            console.log('📋 Therapy note doc:', doc.id, 'therapistId:', data.therapistId, 'content preview:', data.content?.substring(0, 50) + '...');
-            return {
-              id: doc.id,
-              ...data,
-              timestamp: data.timestamp?.toDate() || new Date(data.createdAt)
-            };
-          });
-          
-          // Sort by timestamp descending (newest first) since we removed orderBy from query
-          notesList.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-          
-          console.log('✅ Final notes list:', notesList.length, 'notes');
-          setNotes(notesList);
-          setLoading(false);
-        },
-        (err) => {
-          console.error('Error getting therapy notes:', err);
-          console.log('Error code:', err.code, 'Error message:', err.message);
-          
-          // For most common errors, just show empty state instead of error message
-          const commonErrorCodes = [
-            'permission-denied',
-            'not-found', 
-            'failed-precondition',
-            'unavailable',
-            'unauthenticated'
-          ];
-          
-          if (commonErrorCodes.includes(err.code) || !err.code) {
-            console.log('Showing empty state for common error:', err.code || 'unknown');
-            setNotes([]);
-            setLoading(false);
-            setError(null);
-          } else {
-            // Only show error for truly unexpected errors
-            console.log('Showing error message for unexpected error:', err.code);
-            setError('Failed to load therapy notes');
-            setLoading(false);
-          }
-        }
-      );
+    const merge = () => {
+      // Combine both sources, deduplicate by id, sort newest first
+      const seen = new Set();
+      const combined = [...newPathNotes, ...legacyPathNotes].filter(n => {
+        if (seen.has(n.id)) return false;
+        seen.add(n.id);
+        return true;
+      });
+      combined.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      setNotes(combined);
+      setLoading(false);
+    };
 
-      // Cleanup subscription on unmount
-      return () => unsubscribe();
-    } catch (err) {
-      console.error('Error setting up notes listener:', err);
-      // For setup errors, just show empty state instead of blocking the UI
-      console.log('Showing empty therapy notes state due to setup error');
+    const unsubs = [];
+
+    // Subscribe to new path: clinicalRecords/{clinicalId}/notes
+    if (clinicalId) {
+      try {
+        const unsubNew = onSnapshot(
+          query(collection(db, 'clinicalRecords', clinicalId, 'notes')),
+          (snap) => {
+            newPathNotes = snap.docs.map(d => ({
+              id: d.id,
+              ...d.data(),
+              timestamp: d.data().timestamp?.toDate() || new Date(d.data().createdAt),
+              _source: 'new'
+            }));
+            merge();
+          },
+          () => { newPathNotes = []; merge(); }
+        );
+        unsubs.push(unsubNew);
+      } catch (e) { /* ignore */ }
+    }
+
+    // Subscribe to legacy path: clients/{legacyClientId}/notes
+    if (legacyClientId) {
+      try {
+        const unsubLegacy = onSnapshot(
+          query(collection(db, 'clients', legacyClientId, 'notes')),
+          (snap) => {
+            legacyPathNotes = snap.docs.map(d => ({
+              id: d.id,
+              ...d.data(),
+              timestamp: d.data().timestamp?.toDate() || new Date(d.data().createdAt),
+              _source: 'legacy'
+            }));
+            merge();
+          },
+          () => { legacyPathNotes = []; merge(); }
+        );
+        unsubs.push(unsubLegacy);
+      } catch (e) { /* ignore */ }
+    }
+
+    // If neither path was set up, stop loading
+    if (unsubs.length === 0) {
       setNotes([]);
       setLoading(false);
-      setError(null);
     }
-  }, [clientId, userRole, currentUser, canPerform]);
+
+    return () => unsubs.forEach(u => u());
+  }, [clinicalId, legacyClientId, userRole, currentUser, canPerform]);
 
   const formatDate = (date) => {
     if (!date) return 'Unknown date';
@@ -164,8 +148,7 @@ const TherapyNotesList = ({ clientId }) => {
     }
 
     try {
-      const stringClientId = String(clientId);
-      const noteRef = doc(db, 'clients', stringClientId, 'notes', editingNote.id);
+      const noteRef = doc(db, 'clinicalRecords', clinicalId, 'notes', editingNote.id);
       
       await updateDoc(noteRef, {
         content: editingNote.content,
@@ -188,8 +171,7 @@ const TherapyNotesList = ({ clientId }) => {
     }
 
     try {
-      const stringClientId = String(clientId);
-      const noteRef = doc(db, 'clients', stringClientId, 'notes', noteId);
+      const noteRef = doc(db, 'clinicalRecords', clinicalId, 'notes', noteId);
       
       await deleteDoc(noteRef);
       setSuccessMessage('Note deleted successfully!');

@@ -1,10 +1,11 @@
 // Role configuration for the application
 export const ROLES = {
   ADMIN: 'admin',
-  BILLING: 'billing', // Dedicated billing role
-  THERAPIST: 'therapist', // Actual therapists role
+  BILLING: 'billing',
+  THERAPIST: 'therapist',
   ASSOCIATE: 'associate',
-  VIEWER: 'viewer'
+  VIEWER: 'viewer',
+  CLIENT: 'client'
 };
 
 // User type for future distinction between therapists and billing
@@ -22,7 +23,11 @@ export const ROLE_NAVIGATION = {
     { id: 'admin', label: 'Admin', path: '/admin' },
     { id: 'calendar', label: 'Calendar', path: '/calendar' },
     { id: 'forms', label: 'Clinical Forms', path: '/forms' },
-    { id: 'client-interface', label: 'Client Interface', path: '/client-interface' }
+    { id: 'intake', label: 'Client Intake Form', path: '/intake' }
+  ],
+  [ROLES.CLIENT]: [
+    { id: 'portal',  label: 'My Portal',      path: '/client-interface' },
+    { id: 'intake',  label: 'My Intake Form',  path: '/intake' },
   ],
   [ROLES.BILLING]: [
     { id: 'billing', label: 'Billing', path: '/billing' },
@@ -34,14 +39,12 @@ export const ROLE_NAVIGATION = {
     { id: 'my-clients', label: 'My Clients', path: '/my-clients' },
     { id: 'associates', label: 'Associates', path: '/associates' },
     { id: 'forms', label: 'Clinical Forms', path: '/forms' },
-    { id: 'calendar', label: 'Calendar', path: '/calendar' },
-    { id: 'client-interface', label: 'Client Interface', path: '/client-interface' }
+    { id: 'calendar', label: 'Calendar', path: '/calendar' }
   ],
   [ROLES.ASSOCIATE]: [
     { id: 'associates', label: 'Associates', path: '/associates' },
     { id: 'forms', label: 'Clinical Forms', path: '/forms' },
-    { id: 'calendar', label: 'Calendar', path: '/calendar' },
-    { id: 'client-interface', label: 'Client Interface', path: '/client-interface' }
+    { id: 'calendar', label: 'Calendar', path: '/calendar' }
   ],
   [ROLES.VIEWER]: [
     { id: 'associates', label: 'Associates', path: '/associates' },
@@ -53,6 +56,7 @@ export const ROLE_NAVIGATION = {
 export const ROLE_DISPLAY_NAMES = {
   [ROLES.ADMIN]: 'Administrator',
   [ROLES.BILLING]: 'Billing Specialist',
+  [ROLES.CLIENT]: 'Client',
   [ROLES.THERAPIST]: 'Therapist',
   [ROLES.ASSOCIATE]: 'Associate',
   [ROLES.VIEWER]: 'Viewer'

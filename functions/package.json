@@ -21,7 +21,8 @@
     "firebase-admin": "^12.1.1",
     "firebase-functions": "^5.0.1",
     "google-auth-library": "^9.11.0",
-    "googleapis": "^140.0.0"
+    "googleapis": "^140.0.0",
+    "openai": "^6.9.1"
   },
   "devDependencies": {
     "firebase-functions-test": "^3.1.0"

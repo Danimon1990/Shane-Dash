@@ -618,41 +618,289 @@ const createUserProfileHandler = async (req, res) => {
   try {
     console.log('Received request body:', req.body);
     console.log('Authenticated user:', req.user.uid, 'Role:', req.userRole);
-    
+
     const { firstName, lastName, role } = req.body;
-    
+
     if (!firstName || !lastName || !role) {
       console.error('Missing required fields');
       res.status(400).send('First name, last name, and role are required');
       return;
     }
 
-    console.log(`Creating profile for user ${req.user.uid}`);
-    
-    // Create the user document in Firestore
+    const db = admin.firestore();
+    const { randomUUID } = require('crypto');
+
+    // -------------------------------------------------------
+    // BUCKET A — users/{uid}  (PII layer, never read by AI)
+    // Stage 1: minimal document at account creation.
+    // Remaining fields (address, insurance, consents, etc.)
+    // are added later via update() as forms are completed.
+    // -------------------------------------------------------
     const userData = {
-      email: req.user.email,
       firstName,
       lastName,
-      role,
       name: `${firstName} ${lastName}`,
+      email: req.user.email,
       emailVerified: req.user.emailVerified,
-      createdAt: new Date().toISOString(),
+      role,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
       createdBy: req.user.uid
+      // Fields added later via update() — never overwritten by set():
+      //   preferredName, phone, dateOfBirth
+      //   address: { street, city, state, zip }
+      //   emergencyContact: { name, phone }
+      //   employerOrSchool, paymentPreference
+      //   insuranceDetails: { provider, planName, memberId, groupId, phone, deductible, copay, oopMax }
+      //   paymentToken  ← Stripe token only, raw card data NEVER stored here
+      //   consentSigned: { informedConsent, cancellationPolicy, telehealthConsent, signedAt }
     };
 
-    await admin.firestore().collection('users').doc(req.user.uid).set(userData);
+    // -------------------------------------------------------
+    // CLIENT ROLE: also create Bucket B — clinicalRecords/{clinicalId}
+    // (de-identified, AI-safe — no name, no email, no phone)
+    // -------------------------------------------------------
+    if (role === 'client') {
+      const clinicalId = randomUUID();
+      userData.clinicalId = clinicalId;  // the only link between the two buckets
 
-    console.log('User profile created successfully');
-    res.status(200).json({ 
-      success: true, 
+      // Stage 1: minimal clinical record at account creation.
+      // Clinical fields (maritalStatus, gender, medications, conditions, etc.)
+      // are added later via update() as intake forms are completed.
+      const clinicalRecord = {
+        assignedTherapistId: '',   // filled when a therapist is assigned
+        status: 'pending',
+        intakeDate: null,
+        insuranceType: '',         // 'medicaid' | 'private' | 'self-pay' | 'other'
+        conditions: [],
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+        // Fields added later via update():
+        //   maritalStatus, gender, employmentStatus
+        //   referralSource, reasonForReachingOut
+        //   medications: { current: boolean, list: string }
+      };
+
+      const batch = db.batch();
+      batch.set(db.collection('users').doc(req.user.uid), userData);
+      batch.set(db.collection('clinicalRecords').doc(clinicalId), clinicalRecord);
+      await batch.commit();
+
+      console.log(`✅ Client profile created — uid: ${req.user.uid} | clinicalId: ${clinicalId}`);
+      return res.status(200).json({
+        success: true,
+        message: 'Client profile created successfully',
+        role,
+        clinicalId
+      });
+    }
+
+    // -------------------------------------------------------
+    // STAFF ROLES (admin, therapist, billing, associate, viewer)
+    // No clinical record needed — just the users/ document.
+    // -------------------------------------------------------
+    await db.collection('users').doc(req.user.uid).set(userData);
+
+    console.log(`✅ Staff profile created — uid: ${req.user.uid} | role: ${role}`);
+    res.status(200).json({
+      success: true,
       message: 'User profile created successfully',
-      userData: userData
+      role
     });
   } catch (error) {
     console.error('Error creating user profile:', error);
     console.error('Error stack:', error.stack);
     res.status(500).send('Error creating user profile');
+  }
+};
+
+// ============================================================
+// submitClientIntake — receives the full intake form payload,
+// splits fields into the two buckets, and updates both documents.
+// Uses update() so partial submissions never overwrite existing data.
+// Only the authenticated client can submit their own intake.
+// Admin can also submit on behalf of a client.
+// ============================================================
+const submitClientIntakeHandler = async (req, res) => {
+  if (req.method !== 'POST') {
+    return res.status(405).send('Method Not Allowed');
+  }
+
+  try {
+    const db = admin.firestore();
+    const uid = req.user.uid;
+
+    // Fetch the user's document to get their clinicalId — resolved server-side,
+    // never exposed to or supplied by the client.
+    const userDoc = await db.collection('users').doc(uid).get();
+    if (!userDoc.exists) {
+      return res.status(404).json({ error: 'User profile not found. Please create your account first.' });
+    }
+
+    const userRecord = userDoc.data();
+
+    // Admin can submit on behalf of a client by passing targetUid in the body.
+    // Clients can only submit for themselves.
+    let targetUid = uid;
+    let targetRecord = userRecord;
+
+    if (req.userRole === 'admin' && req.body.targetUid) {
+      targetUid = req.body.targetUid;
+      const targetDoc = await db.collection('users').doc(targetUid).get();
+      if (!targetDoc.exists) {
+        return res.status(404).json({ error: 'Target user not found.' });
+      }
+      targetRecord = targetDoc.data();
+    }
+
+    if (targetRecord.role !== 'client') {
+      return res.status(400).json({ error: 'Intake form is only for client accounts.' });
+    }
+
+    const clinicalId = targetRecord.clinicalId;
+    if (!clinicalId) {
+      return res.status(400).json({ error: 'No clinical record linked to this account. Please contact support.' });
+    }
+
+    const {
+      // --- Bucket A fields (PII) ---
+      preferredName,
+      phone,
+      dateOfBirth,
+      // address
+      street, city, state, zip,
+      // emergency contact
+      emergencyContactName, emergencyContactPhone,
+      employerOrSchool,
+      paymentPreference,
+      // insurance details
+      insuranceProvider, insurancePlanName, insuranceMemberId,
+      insuranceGroupId, insurancePhone, deductible, copay, oopMax,
+      // payment token (Stripe) — raw card data is NEVER accepted here
+      paymentToken,
+      // consents
+      consentInformedConsent, consentCancellationPolicy, consentTelehealth,
+
+      // --- Bucket B fields (clinical, AI-safe) ---
+      maritalStatus,
+      gender,
+      employmentStatus,
+      referralSource,
+      reasonForReachingOut,
+      medicationsCurrent,
+      medicationsList,
+      insuranceType,       // category only: 'medicaid'|'private'|'self-pay'|'other'
+      conditions,
+    } = req.body;
+
+    // -------------------------------------------------------
+    // BUCKET A — update users/{uid} with PII fields only.
+    // Only include fields that were actually sent — undefined
+    // fields are skipped so existing data is never overwritten.
+    // -------------------------------------------------------
+    const bucketAUpdate = {};
+
+    if (preferredName  !== undefined) bucketAUpdate.preferredName  = preferredName;
+    if (phone          !== undefined) bucketAUpdate.phone          = phone;
+    if (dateOfBirth    !== undefined) bucketAUpdate.dateOfBirth    = dateOfBirth;
+    if (employerOrSchool !== undefined) bucketAUpdate.employerOrSchool = employerOrSchool;
+    if (paymentPreference !== undefined) bucketAUpdate.paymentPreference = paymentPreference;
+    if (paymentToken   !== undefined) bucketAUpdate.paymentToken   = paymentToken;
+
+    // Nested objects — only write if at least one subfield was sent
+    if (street !== undefined || city !== undefined || state !== undefined || zip !== undefined) {
+      bucketAUpdate.address = {
+        ...(street !== undefined && { street }),
+        ...(city   !== undefined && { city }),
+        ...(state  !== undefined && { state }),
+        ...(zip    !== undefined && { zip }),
+      };
+    }
+
+    if (emergencyContactName !== undefined || emergencyContactPhone !== undefined) {
+      bucketAUpdate.emergencyContact = {
+        ...(emergencyContactName  !== undefined && { name: emergencyContactName }),
+        ...(emergencyContactPhone !== undefined && { phone: emergencyContactPhone }),
+      };
+    }
+
+    if (
+      insuranceProvider  !== undefined || insurancePlanName !== undefined ||
+      insuranceMemberId  !== undefined || insuranceGroupId  !== undefined ||
+      insurancePhone     !== undefined || deductible        !== undefined ||
+      copay              !== undefined || oopMax            !== undefined
+    ) {
+      bucketAUpdate.insuranceDetails = {
+        ...(insuranceProvider  !== undefined && { provider:   insuranceProvider }),
+        ...(insurancePlanName  !== undefined && { planName:   insurancePlanName }),
+        ...(insuranceMemberId  !== undefined && { memberId:   insuranceMemberId }),
+        ...(insuranceGroupId   !== undefined && { groupId:    insuranceGroupId }),
+        ...(insurancePhone     !== undefined && { phone:      insurancePhone }),
+        ...(deductible         !== undefined && { deductible: deductible }),
+        ...(copay              !== undefined && { copay:      copay }),
+        ...(oopMax             !== undefined && { oopMax:     oopMax }),
+      };
+    }
+
+    if (
+      consentInformedConsent   !== undefined ||
+      consentCancellationPolicy !== undefined ||
+      consentTelehealth        !== undefined
+    ) {
+      bucketAUpdate.consentSigned = {
+        ...(consentInformedConsent    !== undefined && { informedConsent:    consentInformedConsent }),
+        ...(consentCancellationPolicy !== undefined && { cancellationPolicy: consentCancellationPolicy }),
+        ...(consentTelehealth         !== undefined && { telehealthConsent:  consentTelehealth }),
+        signedAt: new Date().toISOString(),
+      };
+    }
+
+    // -------------------------------------------------------
+    // BUCKET B — update clinicalRecords/{clinicalId}.
+    // No PII here — safe for AI to read.
+    // -------------------------------------------------------
+    const bucketBUpdate = {};
+
+    if (maritalStatus        !== undefined) bucketBUpdate.maritalStatus        = maritalStatus;
+    if (gender               !== undefined) bucketBUpdate.gender               = gender;
+    if (employmentStatus     !== undefined) bucketBUpdate.employmentStatus     = employmentStatus;
+    if (referralSource       !== undefined) bucketBUpdate.referralSource       = referralSource;
+    if (reasonForReachingOut !== undefined) bucketBUpdate.reasonForReachingOut = reasonForReachingOut;
+    if (insuranceType        !== undefined) bucketBUpdate.insuranceType        = insuranceType;
+    if (conditions           !== undefined) bucketBUpdate.conditions           = conditions;
+
+    if (medicationsCurrent !== undefined || medicationsList !== undefined) {
+      bucketBUpdate.medications = {
+        ...(medicationsCurrent !== undefined && { current: medicationsCurrent }),
+        ...(medicationsList    !== undefined && { list:    medicationsList }),
+      };
+    }
+
+    // -------------------------------------------------------
+    // Write both buckets atomically — both succeed or both fail.
+    // -------------------------------------------------------
+    const batch = db.batch();
+
+    if (Object.keys(bucketAUpdate).length > 0) {
+      batch.update(db.collection('users').doc(targetUid), bucketAUpdate);
+    }
+
+    if (Object.keys(bucketBUpdate).length > 0) {
+      batch.update(db.collection('clinicalRecords').doc(clinicalId), bucketBUpdate);
+    }
+
+    await batch.commit();
+
+    console.log(`✅ Intake submitted — uid: ${targetUid} | clinicalId: ${clinicalId} | A fields: ${Object.keys(bucketAUpdate).length} | B fields: ${Object.keys(bucketBUpdate).length}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Intake saved successfully.',
+      savedToBucketA: Object.keys(bucketAUpdate),
+      savedToBucketB: Object.keys(bucketBUpdate),
+    });
+
+  } catch (error) {
+    console.error('Error submitting client intake:', error);
+    res.status(500).json({ error: 'Failed to save intake. Please try again.' });
   }
 };
 
@@ -692,6 +940,13 @@ exports.createUserProfile = onRequest({
   memory: '256MiB'
 }, withAuth(createUserProfileHandler, [])); // No role restriction - any authenticated user can create their own profile
 
+exports.submitClientIntake = onRequest({
+  region: 'us-central1',
+  maxInstances: 10,
+  timeoutSeconds: 60,
+  memory: '256MiB'
+}, withAuth(submitClientIntakeHandler, ['client', 'admin'])); // Client submits own intake; admin can submit on behalf
+
 // AI Analysis function - triggers when a form is submitted
 const analyzeFormSubmission = async (snap, context) => {
   const formData = snap.data();
@@ -702,10 +957,8 @@ const analyzeFormSubmission = async (snap, context) => {
   try {
     // Extract form data for AI analysis
     const patientInfo = {
-      firstName: formData.firstName || '',
-      lastName: formData.lastName || '',
+      // PII (name, email) deliberately excluded — never sent to AI
       age: formData.age || '',
-      email: formData.email || '',
       maritalStatus: formData.maritalStatus || '',
       previousDiagnosis: formData.previousDiagnosis || '',
       medicalCondition: formData.medicalCondition || '',
@@ -718,8 +971,7 @@ const analyzeFormSubmission = async (snap, context) => {
     
     const prompt = `You are a clinical psychologist analyzing a patient assessment form based on DSM-V and ICD-10 diagnostic criteria.
 
-Patient Information:
-- Name: ${patientInfo.firstName} ${patientInfo.lastName}
+Individual Assessment (de-identified):
 - Age: ${patientInfo.age}
 - Marital Status: ${patientInfo.maritalStatus}
 - Previous Diagnosis: ${patientInfo.previousDiagnosis || 'None reported'}
@@ -746,7 +998,8 @@ Format your response as JSON with the following structure:
   "suggestedPlan": "A suggested treatment plan based on the identified conditions (2-3 paragraphs)"
 }
 
-Be professional, clinical, and evidence-based in your analysis.`;
+Be professional, clinical, and evidence-based in your analysis.
+NOTE: This record is de-identified. Do not reference any name or personal identifier in your response.`;
 
     // Use OpenAI API (you'll need to set OPENAI_API_KEY in Firebase config)
     // For now, we'll use a placeholder that you can replace with actual AI service
@@ -860,7 +1113,7 @@ function generateFallbackAnalysis(patientInfo) {
     return acc;
   }, 0);
   
-  let summary = `Patient Assessment Summary for ${patientInfo.firstName} ${patientInfo.lastName} (Age: ${patientInfo.age})\n\n`;
+  let summary = `Patient Assessment Summary (Age: ${patientInfo.age})\n\n`;
   summary += `The patient has reported symptoms across multiple diagnostic categories. `;
   summary += `A total of ${symptomCount} symptom indicators have been identified. `;
   
@@ -889,6 +1142,254 @@ function generateFallbackAnalysis(patientInfo) {
     suggestedPlan: suggestedPlan
   };
 }
+
+// ============================================================
+// onClientUserCreated — Firestore trigger
+// Fires whenever a new document is created in users/{uid}.
+// If role === 'client', auto-generates a clinicalId UUID,
+// writes it back to users/{uid}, and creates the matching
+// clinicalRecords/{clinicalId} document (Bucket B).
+//
+// This means the signup flow (AuthContext.signup) does NOT
+// need to know about clinicalIds — it just creates the user
+// document and this trigger handles the rest automatically.
+// ============================================================
+exports.onClientUserCreated = onDocumentCreated(
+  { document: 'users/{uid}', region: 'us-central1' },
+  async (event) => {
+    const userData = event.data.data();
+    if (userData.role !== 'client') return; // only clients need a clinical record
+
+    const uid = event.params.uid;
+    const { randomUUID } = require('crypto');
+    const clinicalId = randomUUID();
+
+    const db = admin.firestore();
+    const batch = db.batch();
+
+    // Write clinicalId back to the user document (Bucket A)
+    batch.update(db.collection('users').doc(uid), { clinicalId });
+
+    // Create the clinical record (Bucket B) — no PII, AI-safe
+    batch.set(db.collection('clinicalRecords').doc(clinicalId), {
+      assignedTherapistId: '',
+      status: 'pending',
+      intakeDate: null,
+      insuranceType: '',
+      conditions: [],
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    await batch.commit();
+    console.log(`✅ onClientUserCreated: uid=${uid} | clinicalId=${clinicalId}`);
+  }
+);
+
+// ============================================================
+// getPortalClients
+// Returns all Firestore-native clients (role=client) joined
+// with their clinicalRecords data.
+//   - admin / billing: all clients
+//   - therapist / associate: only clients assigned to them
+// ============================================================
+const getPortalClientsHandler = async (req, res) => {
+  const db = admin.firestore();
+  const callerUid = req.user.uid;
+  const callerRole = req.userRole;
+
+  // Safely reads a field from a user doc that may be flat (portal signups)
+  // or nested (migrated clients). Always returns a string, never an object.
+  const f = (u, flatKey, ...nestedPath) => {
+    const flat = u[flatKey];
+    if (flat !== undefined && flat !== null && flat !== '' && typeof flat !== 'object') return String(flat);
+    if (nestedPath.length === 0) return '';
+    let obj = u;
+    for (const key of nestedPath) {
+      if (obj === null || obj === undefined || typeof obj !== 'object') return '';
+      obj = obj[key];
+    }
+    if (obj === null || obj === undefined || typeof obj === 'object') return '';
+    return String(obj);
+  };
+
+  try {
+    // 1. Fetch all users with role='client'
+    const usersSnap = await db.collection('users').where('role', '==', 'client').get();
+
+    // 2. Fetch therapist list (roles that can be assigned)
+    const therapistSnap = await db.collection('users')
+      .where('role', 'in', ['therapist', 'admin', 'associate'])
+      .get();
+    const therapists = therapistSnap.docs.map(d => ({
+      uid: d.id,
+      name: d.data().name || `${d.data().firstName || ''} ${d.data().lastName || ''}`.trim()
+    }));
+
+    // 3. For each client, fetch their clinicalRecord
+    const clients = [];
+    for (const userDoc of usersSnap.docs) {
+      const u = userDoc.data();
+      const clinicalId = u.clinicalId;
+      let clinical = {};
+      if (clinicalId) {
+        const clinDoc = await db.collection('clinicalRecords').doc(clinicalId).get();
+        if (clinDoc.exists) clinical = clinDoc.data();
+      }
+
+      // Therapists / associates only see their own assigned clients
+      if (['therapist', 'associate'].includes(callerRole)) {
+        if (clinical.assignedTherapistId !== callerUid) continue;
+      }
+
+      // Resolve therapist name for display
+      const assignedTherapist = therapists.find(t => t.uid === clinical.assignedTherapistId);
+
+      // If a therapist is assigned and status isn't explicitly 'inactive',
+      // treat the client as active. Many migrated clients have status='pending'
+      // or blank because the sheet status column was empty.
+      let status = clinical.status || 'pending';
+      if (clinical.assignedTherapistId && status !== 'inactive') status = 'active';
+
+      clients.push({
+        uid: userDoc.id,
+        clinicalId: clinicalId || null,
+        // Legacy path: clients/{legacyClientId}/notes — used as fallback for notes
+        legacyClientId: `${u.lastName || ''}_${u.firstName || ''}`.replace(/\s+/g, '') || null,
+        firstName: u.firstName || '',
+        lastName: u.lastName || '',
+        email: u.email || '',
+        phone: u.phone || '',
+        dateOfBirth: f(u, 'dateOfBirth', 'birthDate'),
+        preferredName: u.preferredName || '',
+        // Address — flat (portal) or nested under address.* (migrated)
+        street: f(u, 'street', 'address', 'street'),
+        city: f(u, 'city', 'address', 'city'),
+        state: f(u, 'state', 'address', 'state'),
+        zip: f(u, 'zip', 'address', 'zipCode'),
+        // Emergency contact — flat or nested under emergencyContact.*
+        emergencyContactName: f(u, 'emergencyContactName', 'emergencyContact', 'name'),
+        emergencyContactPhone: f(u, 'emergencyContactPhone', 'emergencyContact', 'phone'),
+        // Insurance — flat or nested under insurance.*
+        insuranceProvider: f(u, 'insuranceProvider', 'insurance', 'provider'),
+        insurancePlanName: f(u, 'insurancePlanName', 'insurance', 'planName'),
+        insuranceMemberId: f(u, 'insuranceMemberId', 'insurance', 'memberId'),
+        insuranceGroupId: f(u, 'insuranceGroupId', 'insurance', 'groupId'),
+        copay: f(u, 'copay', 'insurance', 'copay'),
+        deductible: f(u, 'deductible', 'insurance', 'deductible'),
+        paymentPreference: f(u, 'paymentPreference', 'insurance', 'paymentOption'),
+        createdAt: u.createdAt || null,
+        intakeSubmitted: !!(u.phone || u.dateOfBirth || u.birthDate),
+        // Clinical (Bucket B) — all fields read from clinicalRecords
+        status,
+        assignedTherapistId: clinical.assignedTherapistId || '',
+        assignedTherapistName: assignedTherapist?.name || clinical.assignedTherapistName || '',
+        maritalStatus: clinical.maritalStatus || '',
+        gender: clinical.gender || '',
+        employmentStatus: clinical.employmentStatus || '',
+        referralSource: clinical.referralSource || '',
+        reasonForReachingOut: clinical.reasonForReachingOut || '',
+        medicationsCurrent: clinical.medicationsCurrent || false,
+        medicationsList: clinical.medicationsList || '',
+        insuranceType: clinical.insuranceType || '',
+        conditions: Array.isArray(clinical.conditions) ? clinical.conditions : [],
+      });
+    }
+
+    // Sort: unassigned first, then by name
+    clients.sort((a, b) => {
+      if (!a.assignedTherapistId && b.assignedTherapistId) return -1;
+      if (a.assignedTherapistId && !b.assignedTherapistId) return 1;
+      return a.lastName.localeCompare(b.lastName);
+    });
+
+    res.json({ clients, therapists });
+  } catch (err) {
+    console.error('getPortalClients error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getPortalClients = onRequest({
+  region: 'us-central1',
+  maxInstances: 10,
+  timeoutSeconds: 60,
+  memory: '256MiB'
+}, withAuth(getPortalClientsHandler, ['admin', 'billing', 'therapist', 'associate']));
+
+// ============================================================
+// assignPortalClientTherapist
+// Admin-only. Sets assignedTherapistId + therapistName on
+// clinicalRecords/{clinicalId} and flips status to 'active'.
+// Body: { clinicalId, therapistUid, therapistName }
+// ============================================================
+const assignPortalClientTherapistHandler = async (req, res) => {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const { clinicalId, therapistUid, therapistName } = req.body;
+  if (!clinicalId || !therapistUid) {
+    return res.status(400).json({ error: 'clinicalId and therapistUid are required' });
+  }
+
+  try {
+    const db = admin.firestore();
+    await db.collection('clinicalRecords').doc(clinicalId).update({
+      assignedTherapistId: therapistUid,
+      assignedTherapistName: therapistName || '',
+      status: 'active',
+      assignedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    console.log(`✅ Assigned therapist ${therapistUid} to clinicalRecord ${clinicalId}`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('assignPortalClientTherapist error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.assignPortalClientTherapist = onRequest({
+  region: 'us-central1',
+  maxInstances: 10,
+  timeoutSeconds: 30,
+  memory: '256MiB'
+}, withAuth(assignPortalClientTherapistHandler, ['admin', 'billing']));
+
+// ============================================================
+// updatePortalClientStatus
+// Updates status on clinicalRecords/{clinicalId}.
+// Body: { clinicalId, status }  ('active' | 'inactive')
+// ============================================================
+const updatePortalClientStatusHandler = async (req, res) => {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const { clinicalId, status } = req.body;
+  if (!clinicalId || !status) {
+    return res.status(400).json({ error: 'clinicalId and status are required' });
+  }
+  const allowed = ['active', 'inactive'];
+  if (!allowed.includes(status)) {
+    return res.status(400).json({ error: `status must be one of: ${allowed.join(', ')}` });
+  }
+
+  try {
+    const db = admin.firestore();
+    await db.collection('clinicalRecords').doc(clinicalId).update({
+      status,
+      statusUpdatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    console.log(`✅ Updated status to '${status}' for clinicalRecord ${clinicalId}`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('updatePortalClientStatus error:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.updatePortalClientStatus = onRequest({
+  region: 'us-central1',
+  maxInstances: 10,
+  timeoutSeconds: 30,
+  memory: '256MiB'
+}, withAuth(updatePortalClientStatusHandler, ['admin', 'billing', 'therapist', 'associate']));
 
 // Export the Firestore trigger
 exports.analyzeFormSubmission = onDocumentCreated(
@@ -923,10 +1424,7 @@ const analyzePublicInquiry = async (snap, context) => {
   try {
     // Extract form data for AI analysis
     const visitorInfo = {
-      firstName: formData.firstName || '',
-      lastName: formData.lastName || '',
-      email: formData.email || '',
-      phone: formData.phone || '',
+      // PII (name, email, phone) deliberately excluded — never sent to AI
       age: formData.age || null,
       gender: formData.gender || '',
       situation: formData.situation || '',
@@ -941,11 +1439,9 @@ const analyzePublicInquiry = async (snap, context) => {
 
     const prompt = `You are a compassionate mental health professional providing supportive guidance to someone who has completed an online mental health self-assessment. This person is NOT currently a client - they are seeking initial guidance and support.
 
-Visitor Information:
-- Name: ${visitorInfo.firstName}${visitorInfo.lastName ? ' ' + visitorInfo.lastName : ''}
+Individual Assessment (de-identified):
 - Age: ${visitorInfo.age || 'Not provided'}
 - Gender: ${visitorInfo.gender || 'Not provided'}
-- Email: ${visitorInfo.email}
 - Their description of what's going on: ${visitorInfo.situation || 'Not provided'}
 - Identified Conditions from Assessment: ${visitorInfo.identifiedConditions.join(', ') || 'None identified'}
 
@@ -970,13 +1466,14 @@ IMPORTANT GUIDELINES:
 
 Format your response as JSON with the following structure:
 {
-  "personalizedGreeting": "A warm, personalized greeting using their name",
+  "personalizedGreeting": "A warm, supportive opening (do not use any name)",
   "summary": "A supportive summary of what their responses suggest (2-3 paragraphs)",
   "recommendations": ["Array of 3-5 specific, actionable recommendations"],
   "selfCareStrategies": ["Array of 3-4 self-care strategies they can start today"],
   "encouragement": "A brief encouraging message about seeking support",
   "urgencyLevel": "low|moderate|high (based on severity of symptoms)"
-}`;
+}
+NOTE: This record is de-identified. Do not reference any name or personal identifier in your response.`;
 
     // Generate AI analysis
     const aiAnalysis = await generatePublicInquiryAnalysis(prompt, visitorInfo);
@@ -996,7 +1493,7 @@ Format your response as JSON with the following structure:
     await admin.firestore().collection('public_inquiries').doc(formId).update({
       aiAnalysis: {
         error: 'Analysis failed. Our team will review your submission manually.',
-        personalizedGreeting: `Hi ${formData.firstName || 'there'},`,
+        personalizedGreeting: `Hi there,`,
         summary: 'Thank you for completing our mental health check-in. While our automated analysis encountered an issue, please know that your responses have been received and our team will review them.',
         recommendations: [
           'Consider reaching out to a mental health professional for a personal consultation',
@@ -1059,7 +1556,7 @@ async function generatePublicInquiryAnalysis(prompt, visitorInfo) {
       } catch (parseError) {
         // If parsing fails, create a structured response from the content
         return {
-          personalizedGreeting: `Hi ${visitorInfo.firstName || 'there'},`,
+          personalizedGreeting: `Hi there,`,
           summary: content,
           recommendations: ['Consider speaking with a mental health professional', 'Practice daily self-care', 'Reach out to supportive people in your life'],
           selfCareStrategies: ['Deep breathing exercises', 'Regular physical activity', 'Adequate sleep'],
@@ -1092,7 +1589,7 @@ function generatePublicInquiryFallback(visitorInfo) {
     urgencyLevel = 'moderate';
   }
 
-  const personalizedGreeting = `Hi ${visitorInfo.firstName || 'there'},`;
+  const personalizedGreeting = `Hi there,`;
 
   let summary = `Thank you for taking the time to complete this mental health check-in. `;
 

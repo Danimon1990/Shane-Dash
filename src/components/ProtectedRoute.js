@@ -47,7 +47,7 @@ const ProtectedRoute = ({ children }) => {
       // Redirect to appropriate default page based on role
       switch (currentUser.role) {
         case ROLES.ADMIN:
-          return <Navigate to="/clients" replace />;
+          return <Navigate to="/my-clients" replace />;
         case ROLES.BILLING:
           return <Navigate to="/billing" replace />;
         case ROLES.THERAPIST:
@@ -56,8 +56,10 @@ const ProtectedRoute = ({ children }) => {
           return <Navigate to="/associates" replace />;
         case ROLES.VIEWER:
           return <Navigate to="/associates" replace />;
+        case ROLES.CLIENT:
+          return <Navigate to="/client-interface" replace />;
         default:
-          return <Navigate to="/associates" replace />;
+          return <Navigate to="/my-clients" replace />;
       }
     }
   }
