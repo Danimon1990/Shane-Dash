@@ -30,7 +30,10 @@ class SecureApiClient {
           : 'https://assignportalclienttherapist-ccl4wg6xia-uc.a.run.app',
         updatePortalClientStatus: process.env.REACT_APP_USE_LOCAL_FUNCTIONS === 'true'
           ? 'http://127.0.0.1:5001/therapist-online/us-central1/updatePortalClientStatus'
-          : 'https://updateportalclientstatus-ccl4wg6xia-uc.a.run.app'
+          : 'https://updateportalclientstatus-ccl4wg6xia-uc.a.run.app',
+        inviteClient: process.env.REACT_APP_USE_LOCAL_FUNCTIONS === 'true'
+          ? 'http://127.0.0.1:5001/therapist-online/us-central1/inviteClient'
+          : 'https://inviteclient-ccl4wg6xia-uc.a.run.app'
       }
     };
   }

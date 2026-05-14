@@ -238,6 +238,14 @@ service cloud.firestore {
         allow delete: if isAdmin();
       }
 
+      // /journal — client journal entries (written by client, readable by staff)
+      match /journal/{entryId} {
+        allow read: if isStaff() || ownsRecord(clinicalId);
+        allow create: if ownsRecord(clinicalId);
+        allow update: if ownsRecord(clinicalId);
+        allow delete: if isAdmin() || ownsRecord(clinicalId);
+      }
+
       // /chatHistory — AI chatbot sessions
       match /chatHistory/{chatId} {
         // Client reads their own chat. Staff can review.
@@ -274,6 +282,16 @@ service cloud.firestore {
 
       // Only admin deletes.
       allow delete: if isAdmin();
+    }
+
+    // ----------------------------------------------------------
+    // clientInvitations/{email} — portal invite links
+    // Written by admin when inviting a migrated client.
+    // Read/deleted by onClientUserCreated (Admin SDK, bypasses rules).
+    // ----------------------------------------------------------
+    match /clientInvitations/{email} {
+      allow read, write: if isAdminOrBilling();
+      allow delete: if isAdminOrBilling();
     }
 
     // ----------------------------------------------------------

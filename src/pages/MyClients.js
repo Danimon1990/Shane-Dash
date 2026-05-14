@@ -5,6 +5,8 @@ import TherapyNoteForm from '../components/TherapyNoteForm';
 import TherapyNotesList from '../components/TherapyNotesList';
 import TreatmentPlanList from '../components/TreatmentPlanList';
 import secureApiClient from '../utils/secureApiClient';
+import { db } from '../firebase';
+import { collection, query, orderBy, getDocs } from 'firebase/firestore';
 
 const MyClients = () => {
   const location = useLocation();
@@ -23,6 +25,10 @@ const MyClients = () => {
   const [showNoteForm, setShowNoteForm] = useState(false);
   const [notesRefresh, setNotesRefresh] = useState(0);
   const [assigning, setAssigning] = useState(null);
+  const [inviting, setInviting] = useState(null);
+  const [assessments, setAssessments] = useState([]);
+  const [assessmentsLoading, setAssessmentsLoading] = useState(false);
+  const [expandedAssessment, setExpandedAssessment] = useState(null);
 
   // Auto-hide notification after 5 seconds
   useEffect(() => {
@@ -121,6 +127,40 @@ const MyClients = () => {
     }
   };
 
+  const handleInvite = async (client) => {
+    setInviting(client.clinicalId);
+    try {
+      const data = await secureApiClient.makeSecureRequest(
+        secureApiClient.baseURLs.cloudFunctions.inviteClient,
+        { method: 'POST', body: JSON.stringify({ clinicalId: client.clinicalId, email: client.email }) }
+      );
+      await navigator.clipboard.writeText(data.signupUrl);
+      showNotification(`Invitation ready — signup link copied to clipboard for ${client.firstName}`, 'success');
+    } catch (err) {
+      showNotification('Failed to create invitation', 'error');
+    } finally {
+      setInviting(null);
+    }
+  };
+
+  // Load assessments when the assessments tab is active
+  useEffect(() => {
+    if (activeTab !== 'assessments' || !selectedClient?.clinicalId) {
+      setAssessments([]);
+      return;
+    }
+    setAssessmentsLoading(true);
+    getDocs(query(
+      collection(db, 'clinicalRecords', selectedClient.clinicalId, 'assessments'),
+      orderBy('submittedAt', 'desc')
+    ))
+      .then(snap => {
+        setAssessments(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      })
+      .catch(() => setAssessments([]))
+      .finally(() => setAssessmentsLoading(false));
+  }, [activeTab, selectedClient?.clinicalId]);
+
   const filteredClients = clients.filter(c => {
     const fullName = `${c.firstName} ${c.lastName}`.toLowerCase();
     const matchesSearch = fullName.includes(searchTerm.toLowerCase());
@@ -205,7 +245,7 @@ const MyClients = () => {
                     <div
                       key={c.uid}
                       className={`p-3 rounded cursor-pointer ${selectedClient?.uid === c.uid ? 'bg-indigo-100' : 'hover:bg-gray-100'}`}
-                      onClick={() => { setSelectedClient(c); setActiveTab('data'); setShowNoteForm(false); }}
+                      onClick={() => { setSelectedClient(c); setActiveTab('data'); setShowNoteForm(false); setAssessments([]); }}
                     >
                       <div className="font-medium">{c.firstName} {c.lastName}</div>
                       <div className="text-sm text-gray-500">
@@ -252,14 +292,6 @@ const MyClients = () => {
                           Therapist: {selectedClient.assignedTherapistName}
                         </span>
                       )}
-                    <span className="text-xs text-gray-400 font-mono" title="Firebase Auth UID / users collection ID">
-                      UID: {selectedClient.uid}
-                    </span>
-                    {selectedClient.clinicalId && (
-                      <span className="text-xs text-gray-400 font-mono" title="clinicalRecords collection ID">
-                        CID: {selectedClient.clinicalId}
-                      </span>
-                    )}
                     </div>
                   </div>
 
@@ -302,16 +334,33 @@ const MyClients = () => {
                       </div>
                     )}
                   </div>
+
+                  {/* Invite to Portal — only for migrated clients without a verified account */}
+                  {selectedClient.migratedFromSheet && !selectedClient.emailVerified && canPerform('edit_clients') && (
+                    <div className="mt-3 pt-3 border-t border-amber-200 bg-amber-50 rounded-lg px-3 py-2 flex items-center justify-between">
+                      <div className="text-sm text-amber-800">
+                        <span className="font-medium">Not on portal yet.</span> Send this client the signup link.
+                      </div>
+                      <button
+                        onClick={() => handleInvite(selectedClient)}
+                        disabled={inviting === selectedClient.clinicalId}
+                        className="ml-4 px-3 py-1.5 text-sm font-medium bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-amber-500 whitespace-nowrap"
+                      >
+                        {inviting === selectedClient.clinicalId ? 'Creating…' : 'Invite to Portal'}
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Tabs */}
                 <div className="border-b border-gray-200 mb-6">
                   <nav className="-mb-px flex space-x-8">
                     {[
-                      { key: 'data',      label: 'Client Information' },
-                      { key: 'insurance', label: 'Insurance & Billing' },
-                      { key: 'clinical',  label: 'Clinical Information' },
-                      { key: 'notes',     label: 'Therapy Notes' },
+                      { key: 'data',        label: 'Client Information' },
+                      { key: 'insurance',   label: 'Insurance & Billing' },
+                      { key: 'clinical',    label: 'Clinical Information' },
+                      { key: 'notes',       label: 'Therapy Notes' },
+                      { key: 'assessments', label: 'Assessments' },
                     ].map(tab => (
                       <button
                         key={tab.key}
@@ -613,6 +662,111 @@ const MyClients = () => {
                               You don't have permission to view treatment plans
                             </div>
                           )}
+                        </div>
+                      )}
+                    </section>
+                  )}
+
+                  {/* ── Assessments ── */}
+                  {activeTab === 'assessments' && (
+                    <section>
+                      <h3 className="text-lg font-medium mb-4">Client Assessments</h3>
+                      {assessmentsLoading ? (
+                        <div className="text-center text-gray-500 py-8">Loading assessments…</div>
+                      ) : assessments.length === 0 ? (
+                        <div className="text-center text-gray-500 py-8 text-sm">No assessments on file</div>
+                      ) : (
+                        <div className="space-y-4">
+                          {assessments.map(a => {
+                            const date = a.submittedAt?.toDate
+                              ? a.submittedAt.toDate().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                              : a.submittedAt
+                              ? new Date(a.submittedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                              : 'Unknown date';
+                            const isExpanded = expandedAssessment === a.id;
+                            const checkboxes = a.selectedCheckboxes || {};
+                            const checkedItems = Object.entries(checkboxes)
+                              .filter(([, v]) => v === true || v === 'true')
+                              .map(([k]) => k);
+
+                            return (
+                              <div key={a.id} className="border rounded-lg overflow-hidden">
+                                <div
+                                  className="bg-gray-50 p-4 flex justify-between items-center cursor-pointer hover:bg-gray-100"
+                                  onClick={() => setExpandedAssessment(isExpanded ? null : a.id)}
+                                >
+                                  <div>
+                                    <div className="font-medium text-gray-800">Assessment — {date}</div>
+                                    <div className="text-sm text-gray-500 mt-0.5">
+                                      {checkedItems.length > 0
+                                        ? `${checkedItems.length} reported symptom${checkedItems.length !== 1 ? 's' : ''}`
+                                        : 'No symptoms selected'}
+                                      {a.aiAnalysis && <span className="ml-2 text-green-600 font-medium">· AI analysis available</span>}
+                                    </div>
+                                  </div>
+                                  <svg
+                                    className={`w-5 h-5 text-gray-400 transform transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                  >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                  </svg>
+                                </div>
+
+                                {isExpanded && (
+                                  <div className="p-4 border-t space-y-5">
+                                    {/* Basic info */}
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                      {a.age && <div><span className="text-gray-500">Age:</span> <span>{a.age}</span></div>}
+                                      {a.maritalStatus && <div><span className="text-gray-500">Marital Status:</span> <span>{a.maritalStatus}</span></div>}
+                                      {a.previousDiagnosis && <div className="col-span-2"><span className="text-gray-500">Previous Diagnosis:</span> <span>{a.previousDiagnosis}</span></div>}
+                                      {a.medicalCondition && <div className="col-span-2"><span className="text-gray-500">Medical Conditions:</span> <span>{a.medicalCondition}</span></div>}
+                                    </div>
+
+                                    {/* Reported symptoms */}
+                                    {checkedItems.length > 0 && (
+                                      <div>
+                                        <h5 className="text-sm font-semibold text-gray-700 mb-2">Reported Symptoms</h5>
+                                        <div className="flex flex-wrap gap-2">
+                                          {checkedItems.map(item => (
+                                            <span key={item} className="bg-blue-100 text-blue-700 text-xs font-medium px-2.5 py-1 rounded-full">
+                                              {item}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Additional info */}
+                                    {a.additionalInfo && (
+                                      <div>
+                                        <h5 className="text-sm font-semibold text-gray-700 mb-1">Additional Information</h5>
+                                        <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded whitespace-pre-wrap">{a.additionalInfo}</p>
+                                      </div>
+                                    )}
+
+                                    {/* AI Analysis */}
+                                    {a.aiAnalysis && (
+                                      <div className="border-t pt-4">
+                                        <h5 className="text-sm font-semibold text-indigo-700 mb-3">AI Clinical Analysis</h5>
+                                        {a.aiAnalysis.summary && a.aiAnalysis.summary !== 'Analysis unavailable' && (
+                                          <div className="mb-4">
+                                            <h6 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Clinical Summary</h6>
+                                            <p className="text-sm text-gray-700 bg-indigo-50 p-3 rounded whitespace-pre-wrap">{a.aiAnalysis.summary}</p>
+                                          </div>
+                                        )}
+                                        {a.aiAnalysis.suggestedPlan && a.aiAnalysis.suggestedPlan !== 'Analysis unavailable' && (
+                                          <div>
+                                            <h6 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Suggested Treatment Plan</h6>
+                                            <p className="text-sm text-gray-700 bg-green-50 p-3 rounded whitespace-pre-wrap">{a.aiAnalysis.suggestedPlan}</p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </section>

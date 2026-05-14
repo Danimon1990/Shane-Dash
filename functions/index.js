@@ -951,11 +951,31 @@ exports.submitClientIntake = onRequest({
 const analyzeFormSubmission = async (snap, context) => {
   const formData = snap.data();
   const formId = snap.id;
-  
+  const db = admin.firestore();
+
   console.log(`🤖 Starting AI analysis for form submission: ${formId}`);
-  
+
   try {
-    // Extract form data for AI analysis
+    // Step 1: Link by email — look up uid and clinicalId if not already present
+    let uid = formData.uid || null;
+    let clinicalId = formData.clinicalId || null;
+    if (!uid && formData.email) {
+      const userSnap = await db.collection('users').where('email', '==', formData.email).limit(1).get();
+      if (!userSnap.empty) {
+        uid = userSnap.docs[0].id;
+        clinicalId = userSnap.docs[0].data().clinicalId || null;
+        await db.collection('form_submissions').doc(formId).update({
+          uid,
+          clinicalId,
+          linkedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        console.log(`🔗 Linked form ${formId} to uid=${uid} clinicalId=${clinicalId}`);
+      } else {
+        console.log(`⚠️ No user found for email in form ${formId}`);
+      }
+    }
+
+    // Step 2: Extract form data for AI analysis (PII-free)
     const patientInfo = {
       // PII (name, email) deliberately excluded — never sent to AI
       age: formData.age || '',
@@ -965,10 +985,10 @@ const analyzeFormSubmission = async (snap, context) => {
       additionalInfo: formData.additionalInfo || '',
       selectedCheckboxes: formData.selectedCheckboxes || {}
     };
-    
+
     // Build prompt for AI analysis based on DSM-V and ICD-10 criteria
     const symptomsText = JSON.stringify(patientInfo.selectedCheckboxes, null, 2);
-    
+
     const prompt = `You are a clinical psychologist analyzing a patient assessment form based on DSM-V and ICD-10 diagnostic criteria.
 
 Individual Assessment (de-identified):
@@ -1001,12 +1021,11 @@ Format your response as JSON with the following structure:
 Be professional, clinical, and evidence-based in your analysis.
 NOTE: This record is de-identified. Do not reference any name or personal identifier in your response.`;
 
-    // Use OpenAI API (you'll need to set OPENAI_API_KEY in Firebase config)
-    // For now, we'll use a placeholder that you can replace with actual AI service
+    // Step 3: Run AI analysis
     const aiAnalysis = await generateAIAnalysis(prompt, patientInfo);
-    
-    // Update the document with AI analysis
-    await admin.firestore().collection('form_submissions').doc(formId).update({
+
+    // Step 4: Write AI analysis back to form_submissions
+    await db.collection('form_submissions').doc(formId).update({
       aiAnalysis: {
         summary: aiAnalysis.summary,
         suggestedPlan: aiAnalysis.suggestedPlan
@@ -1014,7 +1033,27 @@ NOTE: This record is de-identified. Do not reference any name or personal identi
       analysisTimestamp: admin.firestore.FieldValue.serverTimestamp(),
       analyzed: true
     });
-    
+
+    // Step 5: If we have a clinicalId, copy assessment to clinicalRecords (no PII)
+    if (clinicalId) {
+      await db.collection('clinicalRecords').doc(clinicalId).collection('assessments').doc(formId).set({
+        formId,
+        submittedAt: formData.submittedAt || admin.firestore.FieldValue.serverTimestamp(),
+        age: patientInfo.age,
+        maritalStatus: patientInfo.maritalStatus,
+        previousDiagnosis: patientInfo.previousDiagnosis,
+        medicalCondition: patientInfo.medicalCondition,
+        additionalInfo: patientInfo.additionalInfo,
+        selectedCheckboxes: patientInfo.selectedCheckboxes,
+        aiAnalysis: {
+          summary: aiAnalysis.summary,
+          suggestedPlan: aiAnalysis.suggestedPlan
+        },
+        analysisTimestamp: admin.firestore.FieldValue.serverTimestamp()
+      });
+      console.log(`📋 Assessment copied to clinicalRecords/${clinicalId}/assessments/${formId}`);
+    }
+
     console.log(`✅ AI analysis completed for form: ${formId}`);
   } catch (error) {
     console.error(`❌ Error analyzing form ${formId}:`, error);
@@ -1060,7 +1099,7 @@ async function generateAIAnalysis(prompt, patientInfo) {
       });
       
       const response = await openai.chat.completions.create({
-        model: "gpt-4",
+        model: "gpt-4o",
         messages: [
           {
             role: "system",
@@ -1161,27 +1200,46 @@ exports.onClientUserCreated = onDocumentCreated(
     if (userData.role !== 'client') return; // only clients need a clinical record
 
     const uid = event.params.uid;
+    const email = (userData.email || '').toLowerCase().trim();
     const { randomUUID } = require('crypto');
-    const clinicalId = randomUUID();
-
     const db = admin.firestore();
     const batch = db.batch();
+
+    // Check if an admin pre-registered an invitation for this email
+    let clinicalId = null;
+    let isInvitedClient = false;
+
+    if (email) {
+      const inviteDoc = await db.collection('clientInvitations').doc(email).get();
+      if (inviteDoc.exists) {
+        clinicalId = inviteDoc.data().clinicalId;
+        isInvitedClient = true;
+        console.log(`🔗 Invitation found for ${email} — linking to existing clinicalId: ${clinicalId}`);
+        // Delete the invitation now that it's been consumed
+        batch.delete(db.collection('clientInvitations').doc(email));
+      }
+    }
+
+    if (!isInvitedClient) {
+      // Brand new client — generate a fresh clinical record
+      clinicalId = randomUUID();
+      batch.set(db.collection('clinicalRecords').doc(clinicalId), {
+        assignedTherapistId: '',
+        status: 'pending',
+        intakeDate: null,
+        insuranceType: '',
+        conditions: [],
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      console.log(`✅ onClientUserCreated (new): uid=${uid} | clinicalId=${clinicalId}`);
+    } else {
+      console.log(`✅ onClientUserCreated (invited): uid=${uid} | clinicalId=${clinicalId}`);
+    }
 
     // Write clinicalId back to the user document (Bucket A)
     batch.update(db.collection('users').doc(uid), { clinicalId });
 
-    // Create the clinical record (Bucket B) — no PII, AI-safe
-    batch.set(db.collection('clinicalRecords').doc(clinicalId), {
-      assignedTherapistId: '',
-      status: 'pending',
-      intakeDate: null,
-      insuranceType: '',
-      conditions: [],
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-
     await batch.commit();
-    console.log(`✅ onClientUserCreated: uid=${uid} | clinicalId=${clinicalId}`);
   }
 );
 
@@ -1279,6 +1337,8 @@ const getPortalClientsHandler = async (req, res) => {
         paymentPreference: f(u, 'paymentPreference', 'insurance', 'paymentOption'),
         createdAt: u.createdAt || null,
         intakeSubmitted: !!(u.phone || u.dateOfBirth || u.birthDate),
+        migratedFromSheet: u.migratedFromSheet === true,
+        emailVerified: u.emailVerified === true,
         // Clinical (Bucket B) — all fields read from clinicalRecords
         status,
         assignedTherapistId: clinical.assignedTherapistId || '',
@@ -1390,6 +1450,47 @@ exports.updatePortalClientStatus = onRequest({
   timeoutSeconds: 30,
   memory: '256MiB'
 }, withAuth(updatePortalClientStatusHandler, ['admin', 'billing', 'therapist', 'associate']));
+
+// ============================================================
+// inviteClient — admin creates a portal invitation for a
+// migrated client. Writes clientInvitations/{email} so that
+// when the client signs up, onClientUserCreated links their
+// new account to the existing clinicalRecord.
+// ============================================================
+const inviteClientHandler = async (req, res) => {
+  if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+
+  const { clinicalId, email } = req.body;
+  if (!clinicalId || !email) {
+    return res.status(400).json({ error: 'clinicalId and email are required' });
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+  const db = admin.firestore();
+
+  // Verify the clinicalRecord actually exists
+  const clinicalDoc = await db.collection('clinicalRecords').doc(clinicalId).get();
+  if (!clinicalDoc.exists) {
+    return res.status(404).json({ error: 'Clinical record not found' });
+  }
+
+  // Write the invitation
+  await db.collection('clientInvitations').doc(normalizedEmail).set({
+    clinicalId,
+    invitedAt: admin.firestore.FieldValue.serverTimestamp(),
+    invitedBy: req.user.uid
+  });
+
+  console.log(`📨 Invitation created: ${normalizedEmail} → clinicalId=${clinicalId} by uid=${req.user.uid}`);
+  res.json({ success: true, signupUrl: 'https://therapist-online.web.app/client-signup' });
+};
+
+exports.inviteClient = onRequest({
+  region: 'us-central1',
+  maxInstances: 10,
+  timeoutSeconds: 30,
+  memory: '256MiB'
+}, withAuth(inviteClientHandler, ['admin', 'billing']));
 
 // Export the Firestore trigger
 exports.analyzeFormSubmission = onDocumentCreated(
@@ -1534,7 +1635,7 @@ async function generatePublicInquiryAnalysis(prompt, visitorInfo) {
       });
 
       const response = await openai.chat.completions.create({
-        model: "gpt-4",
+        model: "gpt-4o",
         messages: [
           {
             role: "system",
@@ -1641,6 +1742,126 @@ function generatePublicInquiryFallback(visitorInfo) {
     urgencyLevel
   };
 }
+
+// ============================================================
+// respondToChat — Firestore trigger
+// Fires when a new message is written to
+// clinicalRecords/{clinicalId}/chatHistory/{messageId}
+// If role === 'user', fetches clinical context (no PII),
+// calls GPT-4o, and writes the assistant reply back.
+// ============================================================
+exports.respondToChat = onDocumentCreated(
+  {
+    document: 'clinicalRecords/{clinicalId}/chatHistory/{messageId}',
+    region: 'us-central1',
+    maxInstances: 10,
+    timeoutSeconds: 60,
+    memory: '256MiB'
+  },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+
+    const messageData = snap.data();
+    // Only respond to user messages — ignore assistant messages to avoid loops
+    if (!messageData || messageData.role !== 'user') return;
+
+    const { clinicalId } = event.params;
+    const db = admin.firestore();
+    const openaiApiKey = process.env.OPENAI_API_KEY;
+
+    if (!openaiApiKey) {
+      console.error('OPENAI_API_KEY not set — cannot respond to chat');
+      await db.collection('clinicalRecords').doc(clinicalId)
+        .collection('chatHistory').add({
+          role: 'assistant',
+          content: 'The AI assistant is not configured yet. Please contact your therapist directly.',
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          isError: true
+        });
+      return;
+    }
+
+    try {
+      // Fetch de-identified clinical context (Bucket B — no PII)
+      const clinicalSnap = await db.collection('clinicalRecords').doc(clinicalId).get();
+      const clinical = clinicalSnap.exists ? clinicalSnap.data() : {};
+
+      // Fetch last 20 messages for conversation context
+      const historySnap = await db.collection('clinicalRecords').doc(clinicalId)
+        .collection('chatHistory')
+        .orderBy('createdAt', 'asc')
+        .limitToLast(20)
+        .get();
+
+      const history = historySnap.docs
+        .filter(d => d.id !== snap.id) // exclude the message that triggered this
+        .map(d => ({ role: d.data().role, content: d.data().content }))
+        .filter(m => m.role === 'user' || m.role === 'assistant');
+
+      // Build system prompt with clinical context — no name, no email, no PII
+      const conditions = Array.isArray(clinical.conditions) && clinical.conditions.length > 0
+        ? clinical.conditions.join(', ')
+        : 'not specified';
+      const therapistName = clinical.assignedTherapistName || 'their therapist';
+
+      const systemPrompt = `You are a compassionate AI support assistant for a mental health practice. You provide emotional support and psychoeducation between therapy sessions.
+
+Client context (de-identified — you do not know their name or any personal details):
+- Reported concerns: ${conditions}
+- Status: ${clinical.status || 'active'}
+- Assigned therapist: ${therapistName}
+
+Guidelines:
+- Be warm, empathetic, and supportive
+- You are NOT a replacement for therapy — remind the client to bring important topics to their therapist
+- Never diagnose or prescribe
+- If the client expresses immediate risk of harm to themselves or others, instruct them to call 988 (Suicide & Crisis Lifeline) or 911 immediately
+- Keep responses concise (2-4 sentences) unless the client needs more detailed support
+- Never reference the client's name or personal identifiers`;
+
+      let OpenAI;
+      try {
+        OpenAI = require('openai');
+      } catch (e) {
+        throw new Error('OpenAI package not available');
+      }
+
+      const openai = new OpenAI({ apiKey: openaiApiKey });
+
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...history,
+          { role: 'user', content: messageData.content }
+        ],
+        max_tokens: 300,
+        temperature: 0.7
+      });
+
+      const replyText = completion.choices[0]?.message?.content || 'I\'m here to support you. Could you tell me more?';
+
+      await db.collection('clinicalRecords').doc(clinicalId)
+        .collection('chatHistory').add({
+          role: 'assistant',
+          content: replyText,
+          createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+      console.log(`✅ respondToChat: replied for clinicalId=${clinicalId}`);
+    } catch (err) {
+      console.error('respondToChat error:', err);
+      await db.collection('clinicalRecords').doc(clinicalId)
+        .collection('chatHistory').add({
+          role: 'assistant',
+          content: 'I\'m having trouble responding right now. Please try again in a moment, or bring this up with your therapist.',
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          isError: true
+        });
+    }
+  }
+);
 
 // Export the Firestore trigger for public inquiries
 exports.analyzePublicInquiry = onDocumentCreated(

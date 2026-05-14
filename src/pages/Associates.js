@@ -4,17 +4,17 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSecureData } from '../hooks/useSecureData';
 import { doc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
+import secureApiClient from '../utils/secureApiClient';
 import TherapyNoteForm from '../components/TherapyNoteForm';
 import TherapyNotesList from '../components/TherapyNotesList';
 
 const Associates = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
-  const { 
-    isAuthenticated, 
-    userRole, 
-    secureClientOperations,
-    canPerform 
+  const {
+    isAuthenticated,
+    userRole,
+    canPerform
   } = useSecureData();
   
   const [associates, setAssociates] = useState([]);
@@ -107,40 +107,72 @@ const Associates = () => {
       try {
         setLoading(true);
         setError(null);
-        
-        // Use secure API client to fetch all clients (unfiltered for Associates view)
-        const data = await secureClientOperations.getAllClientsUnfiltered();
-        console.log('🔍 Raw client data:', data);
-        const therapistNamesFound = Array.from(new Set(data.map(client => client.therapist?.name || 'Unassigned')));
-        console.log('🔍 Therapist names found in data:', therapistNamesFound);
-        
-        // The data is now pre-filtered by the cloud function. 
-        // We just need to group it by therapist.
+
+        // Fetch clients from Firestore via getPortalClients (the same source MyClients uses)
+        const response = await secureApiClient.makeSecureRequest(
+          secureApiClient.baseURLs.cloudFunctions.getPortalClients,
+          { method: 'GET' }
+        );
+        const portalClients = response.clients || [];
+        const apiTherapists = response.therapists || [];
+
+        console.log('🔍 Portal clients:', portalClients.length, 'Therapists:', apiTherapists.length);
+
+        // Build therapist map from the API-returned therapist list
         const therapistMap = new Map();
-        therapistList.forEach(name => {
-          therapistMap.set(name, {
-            id: name,
-            name: name,
-            clients: []
-          });
+        apiTherapists.forEach(t => {
+          therapistMap.set(t.name, { id: t.uid, name: t.name, clients: [] });
         });
         // Only admin and billing users (not actual therapists) see unassigned clients
         if (isAdmin || (isBillingUser && !isActualTherapist)) {
-          therapistMap.set('Unassigned', {
-            id: 'Unassigned',
-            name: 'Unassigned',
-            clients: []
-          });
+          therapistMap.set('Unassigned', { id: 'Unassigned', name: 'Unassigned', clients: [] });
         }
 
-        data.forEach(client => {
-          const therapistName = client.therapist?.name || 'Unassigned';
+        portalClients.forEach(client => {
+          const therapistName = client.assignedTherapistName || 'Unassigned';
           if (therapistMap.has(therapistName)) {
             therapistMap.get(therapistName).clients.push({
-              id: client.id,
-              name: `${client.data.firstName} ${client.data.lastName}`,
-              active: client.therapist?.status === 'Active',
-              clientData: client
+              id: client.uid,
+              name: `${client.firstName} ${client.lastName}`,
+              active: client.status === 'active',
+              // Map flat Firestore structure to the nested shape the rest of this component expects
+              clientData: {
+                id: client.uid,
+                clinicalId: client.clinicalId,
+                data: {
+                  firstName: client.firstName,
+                  lastName: client.lastName,
+                  email: client.email,
+                  phone: client.phone,
+                  birthDate: client.dateOfBirth,
+                  gender: client.gender,
+                  maritalStatus: client.maritalStatus,
+                  employmentStatus: client.employmentStatus,
+                  address: {
+                    street: client.street,
+                    city: client.city,
+                    state: client.state,
+                    zipCode: client.zip,
+                  },
+                  emergencyContact: {
+                    name: client.emergencyContactName,
+                    phone: client.emergencyContactPhone,
+                  },
+                },
+                therapist: {
+                  name: client.assignedTherapistName || null,
+                  status: client.status === 'active' ? 'Active' : 'Inactive',
+                },
+                insurance: {
+                  provider: client.insuranceProvider || client.insuranceType,
+                  planName: client.insurancePlanName,
+                  memberId: client.insuranceMemberId,
+                  groupNumber: client.insuranceGroupId,
+                  paymentOption: client.paymentPreference,
+                  deductible: client.deductible,
+                  copay: client.copay,
+                },
+              }
             });
           }
         });
@@ -175,7 +207,7 @@ const Associates = () => {
     };
 
     fetchData();
-  }, [isAuthenticated, canPerform, secureClientOperations, isAdmin, isBillingUser, isActualTherapist, userTherapistName]);
+  }, [isAuthenticated, canPerform, isAdmin, isBillingUser, isActualTherapist, userTherapistName]);
 
   const handleClientClick = async (client) => {
     console.log('Client clicked:', client);
@@ -184,7 +216,7 @@ const Associates = () => {
     const clientWithStringId = {
       ...client.clientData,
       id: firestoreId,
-      clinicalId: null // will be populated below
+      clinicalId: client.clientData.clinicalId || null
     };
 
     setSelectedClient(client.clientData);

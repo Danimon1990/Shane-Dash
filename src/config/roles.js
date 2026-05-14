@@ -23,32 +23,38 @@ export const ROLE_NAVIGATION = {
     { id: 'admin', label: 'Admin', path: '/admin' },
     { id: 'calendar', label: 'Calendar', path: '/calendar' },
     { id: 'forms', label: 'Clinical Forms', path: '/forms' },
-    { id: 'intake', label: 'Client Intake Form', path: '/intake' }
+    { id: 'intake', label: 'Client Intake Form', path: '/intake' },
+    { id: 'informed-consent', label: 'Informed Consent', path: '/informed-consent' }
   ],
   [ROLES.CLIENT]: [
     { id: 'portal',  label: 'My Portal',      path: '/client-interface' },
-    { id: 'intake',  label: 'My Intake Form',  path: '/intake' },
+    { id: 'intake',  label: 'Client Intake',  path: '/intake' },
+    { id: 'informed-consent', label: 'Informed Consent', path: '/informed-consent' }
   ],
   [ROLES.BILLING]: [
     { id: 'billing', label: 'Billing', path: '/billing' },
     { id: 'my-clients', label: 'My Clients', path: '/my-clients' },
     { id: 'associates', label: 'Associates', path: '/associates' },
-    { id: 'calendar', label: 'Calendar', path: '/calendar' }
+    { id: 'calendar', label: 'Calendar', path: '/calendar' },
+    { id: 'informed-consent', label: 'Informed Consent', path: '/informed-consent' }
   ],
   [ROLES.THERAPIST]: [
     { id: 'my-clients', label: 'My Clients', path: '/my-clients' },
     { id: 'associates', label: 'Associates', path: '/associates' },
     { id: 'forms', label: 'Clinical Forms', path: '/forms' },
-    { id: 'calendar', label: 'Calendar', path: '/calendar' }
+    { id: 'calendar', label: 'Calendar', path: '/calendar' },
+    { id: 'informed-consent', label: 'Informed Consent', path: '/informed-consent' }
   ],
   [ROLES.ASSOCIATE]: [
     { id: 'associates', label: 'Associates', path: '/associates' },
     { id: 'forms', label: 'Clinical Forms', path: '/forms' },
-    { id: 'calendar', label: 'Calendar', path: '/calendar' }
+    { id: 'calendar', label: 'Calendar', path: '/calendar' },
+    { id: 'informed-consent', label: 'Informed Consent', path: '/informed-consent' }
   ],
   [ROLES.VIEWER]: [
     { id: 'associates', label: 'Associates', path: '/associates' },
-    { id: 'calendar', label: 'Calendar', path: '/calendar' }
+    { id: 'calendar', label: 'Calendar', path: '/calendar' },
+    { id: 'informed-consent', label: 'Informed Consent', path: '/informed-consent' }
   ]
 };
 

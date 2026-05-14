@@ -21,6 +21,7 @@ import TherapyNotes from './pages/TherapyNotes';
 import ClientInterface from './pages/ClientInterface';
 import ClientIntakeForm from './pages/ClientIntakeForm';
 import ClientSignUp from './pages/ClientSignUp';
+import InformedConsent from './pages/InformedConsent';
 import './App.css';
 
 // Separate layout for authenticated pages
@@ -165,6 +166,13 @@ function App() {
               <ProtectedRoute>
                 <AuthenticatedLayout>
                   <ClientIntakeForm />
+                </AuthenticatedLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/informed-consent" element={
+              <ProtectedRoute>
+                <AuthenticatedLayout>
+                  <InformedConsent />
                 </AuthenticatedLayout>
               </ProtectedRoute>
             } />

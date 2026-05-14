@@ -160,21 +160,10 @@ const ClientInterface = () => {
     setChatInput('');
     setChatSending(true);
     try {
-      // Write the user message to Firestore
+      // Write user message — respondToChat Cloud Function handles the AI reply
       await addDoc(
         collection(db, 'clinicalRecords', userData.clinicalId, 'chatHistory'),
         { role: 'user', content: text, createdAt: serverTimestamp() }
-      );
-      // AI response Cloud Function will be built next session.
-      // For now, write a placeholder assistant message.
-      await addDoc(
-        collection(db, 'clinicalRecords', userData.clinicalId, 'chatHistory'),
-        {
-          role: 'assistant',
-          content: "Thank you for sharing that. Our AI assistant is being set up and will be available very soon. In the meantime, please bring this up with your therapist in your next session.",
-          createdAt: serverTimestamp(),
-          isPlaceholder: true
-        }
       );
     } catch {
       // silent
@@ -457,8 +446,8 @@ const ClientInterface = () => {
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="font-semibold" style={{ color: '#434344' }}>AI Support Chat</h2>
                   <span className="text-xs px-3 py-1 rounded-full font-medium"
-                        style={{ backgroundColor: '#fef9c3', color: '#854d0e' }}>
-                    Beta — AI responses coming soon
+                        style={{ backgroundColor: '#dcfce7', color: '#166534' }}>
+                    AI-powered
                   </span>
                 </div>
 
@@ -494,12 +483,20 @@ const ClientInterface = () => {
                             : { backgroundColor: 'white', color: '#434344', border: '1px solid #e5e7eb' }}
                         >
                           {msg.content}
-                          {msg.isPlaceholder && (
-                            <p className="text-xs mt-1 opacity-60">— Placeholder response</p>
-                          )}
                         </div>
                       </div>
                     ))}
+
+                    {/* Typing indicator — shown while waiting for AI reply */}
+                    {chatSending || (chatMessages.length > 0 && chatMessages[chatMessages.length - 1]?.role === 'user') ? (
+                      <div className="flex justify-start">
+                        <div className="px-4 py-3 rounded-2xl bg-white border border-gray-200 flex gap-1 items-center">
+                          <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                          <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                        </div>
+                      </div>
+                    ) : null}
 
                     <div ref={chatEndRef} />
                   </div>

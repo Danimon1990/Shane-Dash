@@ -10,7 +10,7 @@ const SignUp = () => {
     confirmPassword: '',
     firstName: '',
     lastName: '',
-    role: 'therapist' // Default role
+    role: 'client' // Default role
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -47,10 +47,9 @@ const SignUp = () => {
 
   // Available roles for signup
   const availableRoles = [
-    { value: 'therapist', label: 'Billing' },
+    { value: 'client',    label: 'Client' },
+    { value: 'therapist', label: 'Therapist' },
     { value: 'associate', label: 'Associate' },
-    { value: 'admin', label: 'Admin' },
-    { value: 'viewer', label: 'Viewer' }
   ];
 
   return (
