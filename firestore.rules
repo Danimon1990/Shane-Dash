@@ -295,6 +295,17 @@ service cloud.firestore {
     }
 
     // ----------------------------------------------------------
+    // staffInvitations/{token} — one-time staff signup tokens
+    // Written by admin via inviteStaff Cloud Function.
+    // Read by the /staff-signup page to validate the token.
+    // Deleted by the signup flow once consumed (Admin SDK).
+    // ----------------------------------------------------------
+    match /staffInvitations/{token} {
+      allow read: if true;         // unauthenticated signup page needs to validate
+      allow write: if isAdmin();   // only admin can create/delete invitations
+    }
+
+    // ----------------------------------------------------------
     // CATCH-ALL: deny everything not explicitly matched above
     // ----------------------------------------------------------
     match /{document=**} {

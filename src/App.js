@@ -6,7 +6,6 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
 import UserProfileSetup from './components/UserProfileSetup';
 import Login from './pages/Login';
-import SignUp from './pages/SignUp';
 import EmailVerification from './pages/EmailVerification';
 import Clients from './pages/Clients';
 import Associates from './pages/Associates';
@@ -21,6 +20,7 @@ import TherapyNotes from './pages/TherapyNotes';
 import ClientInterface from './pages/ClientInterface';
 import ClientIntakeForm from './pages/ClientIntakeForm';
 import ClientSignUp from './pages/ClientSignUp';
+import StaffSignUp from './pages/StaffSignUp';
 import InformedConsent from './pages/InformedConsent';
 import './App.css';
 
@@ -80,9 +80,9 @@ function App() {
                 <Login />
               </UnauthenticatedLayout>
             } />
-            <Route path="/signup" element={
+            <Route path="/staff-signup" element={
               <UnauthenticatedLayout>
-                <SignUp />
+                <StaffSignUp />
               </UnauthenticatedLayout>
             } />
             <Route path="/verify-email" element={

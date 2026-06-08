@@ -21,9 +21,7 @@ export const ROLE_NAVIGATION = {
     { id: 'my-clients', label: 'My Clients', path: '/my-clients' },
     { id: 'associates', label: 'Associates', path: '/associates' },
     { id: 'admin', label: 'Admin', path: '/admin' },
-    { id: 'calendar', label: 'Calendar', path: '/calendar' },
     { id: 'forms', label: 'Clinical Forms', path: '/forms' },
-    { id: 'intake', label: 'Client Intake Form', path: '/intake' },
     { id: 'informed-consent', label: 'Informed Consent', path: '/informed-consent' }
   ],
   [ROLES.CLIENT]: [

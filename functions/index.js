@@ -1492,6 +1492,53 @@ exports.inviteClient = onRequest({
   memory: '256MiB'
 }, withAuth(inviteClientHandler, ['admin', 'billing']));
 
+// ============================================================
+// inviteStaff — admin-only
+// Creates a one-time token in staffInvitations/{token} that
+// allows a new therapist/associate to sign up at /staff-signup.
+// Body: { email, role, name }
+// ============================================================
+const inviteStaffHandler = async (req, res) => {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const { email, role, name } = req.body;
+  if (!email || !role || !name) {
+    return res.status(400).json({ error: 'email, role, and name are required' });
+  }
+
+  const allowedRoles = ['therapist', 'associate', 'billing', 'viewer'];
+  if (!allowedRoles.includes(role)) {
+    return res.status(400).json({ error: `Invalid role. Must be one of: ${allowedRoles.join(', ')}` });
+  }
+
+  const { randomUUID } = require('crypto');
+  const db = admin.firestore();
+  const token = randomUUID();
+  const normalizedEmail = email.toLowerCase().trim();
+  const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
+
+  await db.collection('staffInvitations').doc(token).set({
+    email: normalizedEmail,
+    role,
+    name,
+    used: false,
+    invitedBy: req.user.uid,
+    invitedAt: admin.firestore.FieldValue.serverTimestamp(),
+    expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+  });
+
+  const signupUrl = `https://therapist-online.web.app/staff-signup?token=${token}`;
+  console.log(`📨 Staff invitation created: ${normalizedEmail} | role=${role} | token=${token}`);
+  res.json({ success: true, signupUrl, token });
+};
+
+exports.inviteStaff = onRequest({
+  region: 'us-central1',
+  maxInstances: 10,
+  timeoutSeconds: 30,
+  memory: '256MiB'
+}, withAuth(inviteStaffHandler, ['admin']));
+
 // Export the Firestore trigger
 exports.analyzeFormSubmission = onDocumentCreated(
   {
