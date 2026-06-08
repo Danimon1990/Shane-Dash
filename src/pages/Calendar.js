@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 
 const Calendar = () => {
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate] = useState(new Date());
   const [view, setView] = useState('week');
-  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [, setSelectedEvent] = useState(null);
 
   const events = [
     // Sample data - will be replaced with Google Calendar data
@@ -175,7 +175,6 @@ const Calendar = () => {
           <div className="grid grid-cols-7">
             {Array.from({ length: 42 }, (_, i) => {
               const day = i - startingDay + 1;
-              const date = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), day);
               return (
                 <div
                   key={i}

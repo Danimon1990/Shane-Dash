@@ -1,18 +1,16 @@
 // src/pages/Clients.js
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSecureData } from '../hooks/useSecureData';
 import TherapyNoteForm from '../components/TherapyNoteForm';
 import TherapyNotesList from '../components/TherapyNotesList';
 
 const Clients = () => {
-  const navigate = useNavigate();
   const location = useLocation();
   const { currentUser } = useAuth();
   const { 
-    isAuthenticated, 
-    userRole, 
+    isAuthenticated,
     secureClientOperations,
     canPerform 
   } = useSecureData();

@@ -9,8 +9,7 @@ const TherapyNotes = () => {
   const location = useLocation();
   const { currentUser } = useAuth();
   const { 
-    isAuthenticated, 
-    userRole, 
+    isAuthenticated,
     secureClientOperations,
     canPerform 
   } = useSecureData();

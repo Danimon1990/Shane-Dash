@@ -2,7 +2,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getNavigationForRole, getRoleDisplayName, ROLES } from '../config/roles';
+import { getNavigationForRole, getRoleDisplayName } from '../config/roles';
 
 const Sidebar = ({ activeTab }) => {
   const navigate = useNavigate();

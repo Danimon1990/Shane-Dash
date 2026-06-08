@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSecureData } from '../hooks/useSecureData';
 import { doc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
@@ -9,11 +8,9 @@ import TherapyNoteForm from '../components/TherapyNoteForm';
 import TherapyNotesList from '../components/TherapyNotesList';
 
 const Associates = () => {
-  const navigate = useNavigate();
   const { currentUser } = useAuth();
   const {
     isAuthenticated,
-    userRole,
     canPerform
   } = useSecureData();
   
@@ -25,7 +22,6 @@ const Associates = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [notesRefresh, setNotesRefresh] = useState(0);
-  const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('data');
 
   // Define the list of therapists to match Clients.js
@@ -306,21 +302,6 @@ const Associates = () => {
       return JSON.stringify(value) || 'N/A';
     }
     return String(value) || 'N/A';
-  };
-
-  // Filter associates based on search term
-  const filteredAssociates = associates.filter(associate => 
-    associate.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Get active clients count for an associate
-  const getActiveClientsCount = (associate) => {
-    return associate.clients.filter(client => client.active).length;
-  };
-
-  // Get total clients count for an associate
-  const getTotalClientsCount = (associate) => {
-    return associate.clients.length;
   };
 
   // Add console log for selected associate

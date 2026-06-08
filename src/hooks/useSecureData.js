@@ -211,15 +211,7 @@ export const useSecureData = () => {
       if (!canPerform('view_notes')) {
         throw new Error('Insufficient permissions to view notes');
       }
-
-      try {
-        // This would typically fetch from Firestore
-        // For now, return empty array as placeholder
-        return [];
-      } catch (error) {
-        console.error('Failed to fetch client notes:', error);
-        throw error;
-      }
+      return [];
     },
 
     // Create new note (requires permission)
@@ -317,6 +309,7 @@ export const useSecureDataWithRefresh = (dataFetcher, dependencies = []) => {
     } finally {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, dataFetcher, fetchSecureData, ...dependencies]);
 
   useEffect(() => {
@@ -340,8 +333,8 @@ export const useSecureDataWithRefresh = (dataFetcher, dependencies = []) => {
 export const useSecureRealtimeData = (dataType, clientId = null) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const { isAuthenticated, canAccess, getFilteredClientData, getFilteredNotesData } = useSecureData();
+  const [error] = useState(null);
+  const { isAuthenticated, canAccess } = useSecureData();
 
   useEffect(() => {
     if (!isAuthenticated || !canAccess(dataType)) {
