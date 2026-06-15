@@ -16,6 +16,7 @@ const ClientSignUp = () => {
   });
   const [error, setError]     = useState('');
   const [loading, setLoading] = useState(false);
+  const [consentChecked, setConsentChecked] = useState(false);
   const { signup }            = useAuth();
   const navigate              = useNavigate();
 
@@ -146,8 +147,26 @@ const ClientSignUp = () => {
               />
             </div>
 
+            <div className="flex items-start gap-3 pt-1">
+              <input
+                id="consent"
+                type="checkbox"
+                checked={consentChecked}
+                onChange={e => setConsentChecked(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-gray-300 cursor-pointer"
+                style={{ accentColor: '#3c5c6c' }}
+              />
+              <label htmlFor="consent" className="text-sm text-gray-600 leading-snug cursor-pointer">
+                I have read and agree to the{' '}
+                <Link to="/informed-consent" target="_blank" rel="noreferrer"
+                  className="font-medium underline" style={{ color: '#3c5c6c' }}>
+                  Informed Consent
+                </Link>
+              </label>
+            </div>
+
             <button
-              type="submit" disabled={loading}
+              type="submit" disabled={loading || !consentChecked}
               className="w-full py-3 rounded-xl text-white font-semibold text-sm mt-2 hover:opacity-90 transition-opacity disabled:opacity-60"
               style={{ backgroundColor: '#3c5c6c' }}
             >
@@ -156,7 +175,6 @@ const ClientSignUp = () => {
           </form>
 
           <p className="text-xs text-gray-400 text-center mt-6 leading-relaxed">
-            By creating an account you agree to our privacy practices.
             Your information is protected under HIPAA and stored securely.
           </p>
         </div>
