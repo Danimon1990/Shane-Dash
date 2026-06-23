@@ -1302,11 +1302,7 @@ const getPortalClientsHandler = async (req, res) => {
       // Resolve therapist name for display
       const assignedTherapist = therapists.find(t => t.uid === clinical.assignedTherapistId);
 
-      // If a therapist is assigned and status isn't explicitly 'inactive',
-      // treat the client as active. Many migrated clients have status='pending'
-      // or blank because the sheet status column was empty.
-      let status = clinical.status || 'pending';
-      if (clinical.assignedTherapistId && status !== 'inactive') status = 'active';
+      const status = clinical.status || 'pending';
 
       clients.push({
         uid: userDoc.id,
