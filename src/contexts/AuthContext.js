@@ -7,7 +7,7 @@ import {
   sendEmailVerification,
   onAuthStateChanged
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import authTokenManager from '../utils/authToken.js';
 import rbac from '../utils/roleBasedAccess.js';
 
@@ -147,7 +147,9 @@ export function AuthProvider({ children }) {
         role,
         name: `${firstName} ${lastName}`,
         emailVerified: false,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        // Record informed consent acknowledgement at signup for client accounts
+        ...(role === 'client' && { consentAcknowledgedAt: new Date().toISOString() })
       };
 
       await setDoc(doc(db, 'users', user.uid), userData);
@@ -222,6 +224,17 @@ export function AuthProvider({ children }) {
       console.error('Error in logout:', error);
       throw error;
     }
+  }
+
+  async function acknowledgeConsent() {
+    const user = auth.currentUser;
+    if (!user) throw new Error('No authenticated user');
+    const timestamp = new Date().toISOString();
+    await updateDoc(doc(db, 'users', user.uid), {
+      consentAcknowledgedAt: timestamp
+    });
+    // Update local currentUser state so the gate disappears immediately
+    setCurrentUser(prev => ({ ...prev, consentAcknowledgedAt: timestamp }));
   }
 
   async function resendVerificationEmail() {
@@ -299,6 +312,7 @@ export function AuthProvider({ children }) {
     signup,
     login,
     logout,
+    acknowledgeConsent,
     resendVerificationEmail,
     refreshCurrentUser,
     loading,

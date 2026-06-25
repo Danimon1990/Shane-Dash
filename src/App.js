@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
 import UserProfileSetup from './components/UserProfileSetup';
+import ConsentGate from './components/ConsentGate';
 import Login from './pages/Login';
 import EmailVerification from './pages/EmailVerification';
 import Clients from './pages/Clients';
@@ -51,7 +52,7 @@ const ProfileSetupWrapper = ({ children }) => {
 
   if (needsProfileSetup && currentUser) {
     return (
-      <UserProfileSetup 
+      <UserProfileSetup
         onComplete={() => {
           setNeedsProfileSetup(false);
         }}
@@ -62,11 +63,24 @@ const ProfileSetupWrapper = ({ children }) => {
   return children;
 };
 
+// Gate for client accounts that haven't acknowledged informed consent yet.
+// Shows once on first login after the requirement was introduced, then never again.
+const ConsentGateWrapper = ({ children }) => {
+  const { currentUser } = useAuth();
+
+  if (currentUser?.role === 'client' && !currentUser?.consentAcknowledgedAt) {
+    return <ConsentGate />;
+  }
+
+  return children;
+};
+
 function App() {
   return (
     <Router>
       <AuthProvider>
         <ProfileSetupWrapper>
+          <ConsentGateWrapper>
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<Home />} />
@@ -177,6 +191,7 @@ function App() {
               </ProtectedRoute>
             } />
           </Routes>
+          </ConsentGateWrapper>
         </ProfileSetupWrapper>
       </AuthProvider>
     </Router>
